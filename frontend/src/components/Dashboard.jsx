@@ -248,6 +248,12 @@ function Dashboard({ onLogout, onSelectSkill }) {
 
           {activeNav === "problems" && <LanguagesSection onSelectSkill={onSelectSkill} />}
 
+          {activeNav === "leaderboard" && <Leaderboard isDark={isDark} />}
+          
+          {activeNav === "progress" && (
+            <Progress stats={stats} recentSubmissions={recentSubmissions} isDark={isDark} />
+          )}
+
           {activeNav === "settings" && (
             <SettingsPanel
               theme={theme}

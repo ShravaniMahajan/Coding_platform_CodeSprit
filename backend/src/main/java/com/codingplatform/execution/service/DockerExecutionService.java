@@ -104,43 +104,69 @@ public class DockerExecutionService {
     }
 
     private ExecutionResponse executeLocally(Path tempDir, String fileName, ExecutionRequest request) throws Exception {
-        ProcessBuilder pb;
         ProgrammingLanguage lang = request.getLanguage();
 
+        // Step 1: Compile if necessary
+        ProcessBuilder compilePb = null;
         if (lang == ProgrammingLanguage.C) {
-            pb = new ProcessBuilder("cmd.exe", "/c", "gcc " + fileName + " -o main && main.exe");
+            compilePb = new ProcessBuilder("gcc", fileName, "-o", "main");
         } else if (lang == ProgrammingLanguage.CPP) {
-            pb = new ProcessBuilder("cmd.exe", "/c", "g++ " + fileName + " -o main && main.exe");
+            compilePb = new ProcessBuilder("g++", fileName, "-o", "main");
         } else if (lang == ProgrammingLanguage.JAVA) {
-            pb = new ProcessBuilder("sh", "-c", "javac " + fileName + " && java Solution");
-            if (isWindows()) {
-                pb = new ProcessBuilder("cmd.exe", "/c", "javac " + fileName + " && java Solution");
+            compilePb = new ProcessBuilder("javac", fileName);
+        }
+
+        if (compilePb != null) {
+            compilePb.directory(tempDir.toFile());
+            Process compileProcess = compilePb.start();
+            boolean compiled = compileProcess.waitFor(10, TimeUnit.SECONDS);
+            if (!compiled) {
+                compileProcess.destroyForcibly();
+                return ExecutionResponse.builder()
+                        .compiledSuccessfully(false)
+                        .compileError("Compilation timed out")
+                        .build();
             }
+            if (compileProcess.exitValue() != 0) {
+                String compileError = readStream(compileProcess.getErrorStream());
+                return ExecutionResponse.builder()
+                        .compiledSuccessfully(false)
+                        .compileError(compileError)
+                        .build();
+            }
+        }
+
+        // Step 2: Execute
+        ProcessBuilder runPb;
+        if (lang == ProgrammingLanguage.C || lang == ProgrammingLanguage.CPP) {
+            runPb = new ProcessBuilder(isWindows() ? "main.exe" : "./main");
+        } else if (lang == ProgrammingLanguage.JAVA) {
+            runPb = new ProcessBuilder("java", "Solution");
         } else if (lang == ProgrammingLanguage.PYTHON) {
-            pb = new ProcessBuilder("python", fileName);
+            runPb = new ProcessBuilder("python", fileName);
         } else if (lang == ProgrammingLanguage.JAVASCRIPT) {
-            pb = new ProcessBuilder("node", fileName);
+            runPb = new ProcessBuilder("node", fileName);
         } else if (lang == ProgrammingLanguage.SQL) {
-            pb = new ProcessBuilder("python", "-c", "import sqlite3; conn = sqlite3.connect(':memory:'); conn.executescript(open('" + fileName + "').read())");
+            runPb = new ProcessBuilder("python", "-c", "import sqlite3; conn = sqlite3.connect(':memory:'); conn.executescript(open('" + fileName + "').read())");
         } else {
             throw new IllegalArgumentException("Unsupported language for local execution: " + lang);
         }
 
-        pb.directory(tempDir.toFile());
-        return runProcessWithTimeout(pb, request);
+        runPb.directory(tempDir.toFile());
+        return runProcessWithTimeout(runPb, request);
     }
 
     private ExecutionResponse runProcessWithTimeout(ProcessBuilder pb, ExecutionRequest request) throws Exception {
         long startTime = System.currentTimeMillis();
         Process process = pb.start();
 
-        // Write stdin input
-        if (request.getStdinInput() != null && !request.getStdinInput().isEmpty()) {
-            try (OutputStream os = process.getOutputStream()) {
+        // Write stdin input and always close the stream to signal EOF
+        try (OutputStream os = process.getOutputStream()) {
+            if (request.getStdinInput() != null && !request.getStdinInput().isEmpty()) {
                 os.write(request.getStdinInput().getBytes(StandardCharsets.UTF_8));
                 os.flush();
-            } catch (IOException ignored) {}
-        }
+            }
+        } catch (IOException ignored) {}
 
         boolean completed = process.waitFor(request.getTimeLimitSeconds(), TimeUnit.SECONDS);
         long executionTimeMs = System.currentTimeMillis() - startTime;

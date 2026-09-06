@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronUp, AlignLeft, FileText
 } from "lucide-react";
 
-const LANG_MAP = { JAVA: "java", PYTHON: "python", CPP: "cpp", JAVASCRIPT: "javascript", C: "c" };
+const LANG_MAP = { JAVA: "java", PYTHON: "python", CPP: "cpp", JAVASCRIPT: "javascript", C: "c", SQL: "sql" };
 
 const DIFF_STYLE = {
   EASY: "text-emerald-600 bg-emerald-50 border-emerald-200",
@@ -41,11 +41,14 @@ function Workspace({ problemId, onBack }) {
   const [submitResult, setSubmitResult] = useState(null);
   const [hintsOpen, setHintsOpen] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedSubmission, setExpandedSubmission] = useState(null);
 
   const getStarterCode = (lang, p) => {
     if (!p) return "// Write your code here";
     const map = { JAVA: p.starterCodeJava, PYTHON: p.starterCodePython, CPP: p.starterCodeCpp, JAVASCRIPT: p.starterCodeJavascript };
-    return map[lang] || "// Write your code here";
+    if (map[lang]) return map[lang];
+    if (lang === "SQL") return "-- Write your SQL query here";
+    return "// Write your code here";
   };
 
   useEffect(() => {
@@ -74,7 +77,7 @@ function Workspace({ problemId, onBack }) {
         }
         if (sRes.ok) {
           const subs = await sRes.json();
-          setSubmissions(subs.slice(0, 15));
+          setSubmissions(subs.filter(s => s.problemId === parseInt(problemId, 10)).slice(0, 1));
         }
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
@@ -114,6 +117,9 @@ function Workspace({ problemId, onBack }) {
       });
       const data = await res.json();
       setSubmitResult({ ok: res.ok, data });
+      if (res.ok) {
+        setSubmissions([data]);
+      }
     } catch (e) { setSubmitResult({ ok: false, data: { error: e.message } }); }
     finally { setSubmitting(false); }
   };
@@ -270,12 +276,27 @@ function Workspace({ problemId, onBack }) {
             {leftTab === "submissions" && (submissions.length > 0 ? (
               <div className="space-y-2">
                 {submissions.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-white transition-colors">
-                    <div>
-                      <div className={`font-bold text-sm ${STATUS_COLOR(s.status)}`}>{s.status?.replace(/_/g, " ")}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">{s.language} · {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : "—"}</div>
+                  <div key={i} className="flex flex-col p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-white transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className={`font-bold text-sm ${STATUS_COLOR(s.status)}`}>{s.status?.replace(/_/g, " ")}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">{s.language} · {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : "—"}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-xs text-slate-400">#{s.id}</span>
+                        <button 
+                          onClick={() => setExpandedSubmission(expandedSubmission === s.id ? null : s.id)}
+                          className="px-3 py-1 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                        >
+                          {expandedSubmission === s.id ? "Hide Code" : "View Code"}
+                        </button>
+                      </div>
                     </div>
-                    <div className="font-mono text-xs text-slate-400">#{s.id}</div>
+                    {expandedSubmission === s.id && (
+                      <div className="mt-3 bg-slate-800 rounded-lg p-3 overflow-x-auto">
+                        <pre className="text-xs font-mono text-slate-200">{s.code}</pre>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -305,6 +326,7 @@ function Workspace({ problemId, onBack }) {
                   <option value="CPP">C++</option>
                   <option value="JAVASCRIPT">JavaScript</option>
                   <option value="C">C</option>
+                  <option value="SQL">SQL</option>
                 </select>
               </div>
               <button onClick={() => setCode(getStarterCode(language, problem))}

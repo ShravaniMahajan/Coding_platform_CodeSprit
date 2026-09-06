@@ -16,7 +16,11 @@ function SkillProblems({ skillId, skillName, onBack, onSelectProblem }) {
         });
         if (res.ok) {
           const data = await res.json();
-          setProblems(data);
+          const filteredData = data.filter(p => {
+             // Default to showing all if topic is not set, or strictly filter by topic matching skillName
+             return p.topic === skillName;
+          });
+          setProblems(filteredData);
         }
       } catch (err) {
         console.error(err);

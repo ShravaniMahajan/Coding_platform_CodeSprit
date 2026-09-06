@@ -50,7 +50,8 @@ public class AuthService {
                 "User registered successfully!",
                 savedUser.getId(),
                 savedUser.getUsername(),
-                savedUser.getEmail()
+                savedUser.getEmail(),
+                savedUser.getRole()
         );
     }
 

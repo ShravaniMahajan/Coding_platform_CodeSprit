@@ -48,10 +48,11 @@ public class SubmissionService {
 
         Submission saved = submissionRepository.save(submission);
 
-        // Trigger async execution engine
-        submissionProcessorService.processSubmissionAsync(saved.getId());
+        // Trigger synchronous execution engine
+        submissionProcessorService.processSubmission(saved.getId());
 
-        return convertToResponse(saved);
+        Submission updated = submissionRepository.findById(saved.getId()).orElse(saved);
+        return convertToResponse(updated);
     }
 
     public SubmissionResponse getSubmissionById(Long id) {

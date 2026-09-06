@@ -13,7 +13,10 @@ function Leaderboard({ isDark }) {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const res = await fetch("http://localhost:8080/api/leaderboard/global");
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8080/api/leaderboard/global", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         if (res.ok) {
           const data = await res.json();
           setLeaders(data);

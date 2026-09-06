@@ -29,9 +29,8 @@ public class SubmissionProcessorService {
     private final SubmissionResultRepository submissionResultRepository;
     private final DockerExecutionService dockerExecutionService;
 
-    @Async
     @Transactional
-    public void processSubmissionAsync(Long submissionId) {
+    public void processSubmission(Long submissionId) {
         Submission submission = submissionRepository.findById(submissionId).orElse(null);
         if (submission == null) {
             log.error("Submission not found for ID: {}", submissionId);
