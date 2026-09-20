@@ -1621,12 +1621,18 @@ function AdminDashboard({ onLogout }) {
       const mRes = await fetch("http://localhost:8080/api/contact", { headers: apiHeaders() });
       if (mRes.ok) {
         const data = await mRes.json();
-        setMessages(Array.isArray(data) ? data : []);
+        const apiMsgs = Array.isArray(data) ? data : [];
+        const localMsgs = JSON.parse(localStorage.getItem("codesphere_contact_messages") || "[]");
+        const merged = [...apiMsgs];
+        localMsgs.forEach(lm => { if (!merged.find(m => String(m.id) === String(lm.id))) merged.push(lm); });
+        setMessages(merged);
       } else {
-        setMessages([]);
+        const localMsgs = JSON.parse(localStorage.getItem("codesphere_contact_messages") || "[]");
+        setMessages(localMsgs);
       }
     } catch {
-      setMessages([]);
+      const localMsgs = JSON.parse(localStorage.getItem("codesphere_contact_messages") || "[]");
+      setMessages(localMsgs);
     }
 
     if (warnings.length > 0) {

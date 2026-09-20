@@ -12,26 +12,39 @@ function ContactUs() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newMsg = {
+      id: Date.now(),
+      name: formData.name,
+      email: formData.email,
+      message: formData.message,
+      createdAt: new Date().toISOString()
+    };
+
+    // Save to localStorage so it's always preserved (even offline/GitHub Pages)
     try {
-      const res = await fetch("http://localhost:8080/api/contact", {
+      const existing = JSON.parse(localStorage.getItem("codesphere_contact_messages") || "[]");
+      localStorage.setItem("codesphere_contact_messages", JSON.stringify([newMsg, ...existing]));
+    } catch (err) {
+      console.warn("Could not save message to localStorage", err);
+    }
+
+    // Try posting to backend if available
+    try {
+      await fetch("http://localhost:8080/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       });
-      if (res.ok) {
-        setSubmitted(true);
-        setTimeout(() => {
-          setSubmitted(false);
-          setFormData({ name: "", email: "", message: "" });
-        }, 3000);
-      } else {
-        const errText = await res.text();
-        alert("Failed to send message: " + (errText || res.status));
-      }
     } catch (err) {
-      console.error(err);
-      alert("Network error: " + err.message);
+      // Backend is optional on static deployments (e.g. GitHub Pages)
+      console.info("Backend contact API unavailable, saved locally:", err);
     }
+
+    setSubmitted(true);
+    setTimeout(() => {
+      setSubmitted(false);
+      setFormData({ name: "", email: "", message: "" });
+    }, 3000);
   };
 
   const contactInfo = [
