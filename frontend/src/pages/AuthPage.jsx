@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import loginIllustration from "../assets/login_illustration.png";
+import registerIllustration from "../assets/register_illustration.png";
 
 function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -60,9 +62,9 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
             </div>
             <div className="auth-illustration-card">
               {activeTab === "login" ? (
-                <img src="/src/assets/login_illustration.png" alt="Login" className="auth-illustration-img" onError={(e) => e.target.style.display='none'} />
+                <img src={loginIllustration} alt="Login" className="auth-illustration-img" onError={(e) => e.target.style.display='none'} />
               ) : (
-                <img src="/src/assets/register_illustration.png" alt="Register" className="auth-illustration-img" onError={(e) => e.target.style.display='none'} />
+                <img src={registerIllustration} alt="Register" className="auth-illustration-img" onError={(e) => e.target.style.display='none'} />
               )}
               <h2 className="auth-illustration-title">
                 {activeTab === "login" ? "Welcome Back!" : "Join Us Today!"}

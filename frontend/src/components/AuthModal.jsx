@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { User, Lock, Mail, Eye, EyeOff, Loader2, Code2, AlertCircle, CheckCircle2, X } from "lucide-react";
+import loginIllustration from "../assets/login_illustration.png";
+import registerIllustration from "../assets/register_illustration.png";
 
 function AuthModal({ onClose, onLoginSuccess }) {
   const [activeTab, setActiveTab] = useState("login");
@@ -51,9 +53,9 @@ function AuthModal({ onClose, onLoginSuccess }) {
         <div className="hidden md:flex w-1/2 bg-blue-600 p-8 flex-col items-center justify-center relative">
           <div className="bg-white rounded-2xl p-6 shadow-lg w-full max-w-xs flex flex-col items-center relative z-10">
             {activeTab === "login" ? (
-              <img src="/src/assets/login_illustration.png" alt="Login" className="w-48 h-auto" onError={(e) => e.target.style.display='none'} />
+              <img src={loginIllustration} alt="Login" className="w-48 h-auto" onError={(e) => e.target.style.display='none'} />
             ) : (
-              <img src="/src/assets/register_illustration.png" alt="Register" className="w-48 h-auto" onError={(e) => e.target.style.display='none'} />
+              <img src={registerIllustration} alt="Register" className="w-48 h-auto" onError={(e) => e.target.style.display='none'} />
             )}
             <h2 className="text-xl font-bold text-slate-800 mt-4 text-center">
               {activeTab === "login" ? "Welcome Back!" : "Create Your Account"}

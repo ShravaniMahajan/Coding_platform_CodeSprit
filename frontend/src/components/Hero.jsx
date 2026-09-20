@@ -1,5 +1,6 @@
 import React from "react";
 import { Sparkles, ArrowRight, Code2, ShieldCheck, Terminal } from "lucide-react";
+import coderStudentImg from "../assets/coder-student-laptop.png";
 
 function Hero({ onOpenAuth }) {
   return (
@@ -66,7 +67,7 @@ function Hero({ onOpenAuth }) {
             {/* AI Student Image Wrapper */}
             <div className="relative rounded-3xl overflow-hidden border border-slate-200/80 bg-slate-900 shadow-2xl shadow-indigo-950/20 group">
               <img 
-                src="/coder-student-laptop.png" 
+                src={coderStudentImg} 
                 alt="Coder Student working on Laptop with AI" 
                 className="w-full h-[420px] sm:h-[480px] object-cover object-center group-hover:scale-[1.03] transition-transform duration-700"
               />
