@@ -40,12 +40,6 @@ function App() {
   };
 
   const handleSelectProblem = (problemId) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      // Not logged in — just show login ONCE. Upon success, they go to the Dashboard problems panel.
-      handleOpenAuth("login");
-      return;
-    }
     setSelectedProblem(problemId);
     setCurrentPage("workspace");
   };

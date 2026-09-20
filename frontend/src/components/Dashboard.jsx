@@ -496,7 +496,7 @@ function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
         </header>
 
         {/* View Routing */}
-        <div className="p-6 space-y-6">
+        <div className="p-3 space-y-4">
           {/* Problems View */}
           {activeNav === "problems" && <ProblemsPanel isDark={isDark} onSelectProblem={onSelectProblem} />}
 
