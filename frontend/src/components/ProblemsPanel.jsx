@@ -454,29 +454,29 @@ function ProblemsPanel({ isDark, onSelectProblem }) {
       </div>
 
       {/* Problem List */}
-      <div className={`rounded-2xl overflow-hidden border ${isDark ? "bg-[#0f1115] border-slate-800" : "bg-white border-slate-200"} shadow-sm`}>
+      <div className={`rounded-2xl border overflow-hidden ${isDark ? "bg-[#0f1115] border-slate-800" : "bg-white border-slate-200"} shadow-sm`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className={`border-b ${isDark ? "border-slate-800/80 bg-black/20" : "border-slate-100 bg-slate-50/50"} text-[10px] uppercase tracking-widest font-black ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                <th className="py-3 px-4 font-bold w-32">Status</th>
-                <th className="py-3 px-4 font-bold min-w-[200px]">Title</th>
-                <th className="py-3 px-4 font-bold w-28">Difficulty</th>
-                <th className="py-3 px-4 font-bold min-w-[180px]">Category</th>
-                <th className="py-3 px-4 font-bold w-32">Points</th>
-                <th className="py-3 px-4 font-bold text-right w-44">Action</th>
+              <tr className={`border-b ${isDark ? "border-slate-800/80 bg-black/20" : "border-slate-100 bg-slate-50/50"} text-[10px] uppercase tracking-wider font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                <th className="py-3 px-4 font-bold w-[12%]">Status</th>
+                <th className="py-3 px-4 font-bold w-[34%]">Title</th>
+                <th className="py-3 px-4 font-bold w-[14%]">Difficulty</th>
+                <th className="py-3 px-4 font-bold w-[22%]">Category</th>
+                <th className="py-3 px-4 font-bold w-[10%]">Points</th>
+                <th className="py-3 px-4 font-bold text-right w-[8%]">Action</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDark ? "divide-slate-800/60" : "divide-slate-100"}`}>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-10 text-center text-sm text-slate-500">
+                  <td colSpan="6" className="py-8 text-center text-sm text-slate-500">
                     Loading CodeSphere problems...
                   </td>
                 </tr>
               ) : filteredProblems.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-10 text-center text-sm text-slate-500">
+                  <td colSpan="6" className="py-8 text-center text-sm text-slate-500">
                     No problems match your criteria.
                   </td>
                 </tr>
@@ -487,24 +487,24 @@ function ProblemsPanel({ isDark, onSelectProblem }) {
                   return (
                     <tr key={p.id} className={`group transition-colors ${isDark ? "hover:bg-white/[0.02]" : "hover:bg-slate-50"}`}>
                       {/* Status */}
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-4">
                         {status === "Solved" ? (
-                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${isDark ? "border-slate-700 bg-black/40 text-slate-300" : "border-slate-300 bg-white text-slate-700"} text-xs font-bold whitespace-nowrap`}>
-                            <CheckCircle2 size={14} className={isDark ? "text-slate-400" : "text-slate-500"} /> Solved
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border ${isDark ? "border-slate-700 bg-black/40 text-slate-300" : "border-slate-300 bg-white text-slate-700"} text-xs font-bold whitespace-nowrap`}>
+                            <CheckCircle2 size={13} className={isDark ? "text-slate-400" : "text-slate-500"} /> Solved
                           </div>
                         ) : status === "Continue" ? (
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-bold whitespace-nowrap">
-                            <PlayCircle size={14} /> Continue
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs font-bold whitespace-nowrap">
+                            <PlayCircle size={13} /> Continue
                           </div>
                         ) : (
-                          <div className={`text-xs font-bold ${isDark ? "text-slate-600" : "text-slate-400"} px-3 py-1`}>
+                          <div className={`text-xs font-bold ${isDark ? "text-slate-600" : "text-slate-400"} px-2 py-0.5`}>
                             Todo
                           </div>
                         )}
                       </td>
                       
                       {/* Title */}
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-4">
                         <div 
                           onClick={() => onSelectProblem && onSelectProblem(p.id)}
                           className={`font-semibold text-sm cursor-pointer hover:text-amber-400 transition-colors ${isDark ? "text-slate-200" : "text-slate-800"}`}
@@ -514,15 +514,15 @@ function ProblemsPanel({ isDark, onSelectProblem }) {
                       </td>
                       
                       {/* Difficulty */}
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-4">
                         <span className={`inline-block px-2.5 py-0.5 rounded border text-[10px] font-black uppercase tracking-widest ${diffColor(p.difficulty)}`}>
                           {p.difficulty || "MEDIUM"}
                         </span>
                       </td>
                       
                       {/* Category */}
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1.5">
+                      <td className="py-2.5 px-4">
+                        <div className="flex flex-wrap gap-1">
                           {p.topic ? p.topic.split(",").map(t => {
                             const trimmed = t.trim();
                             return (
@@ -550,34 +550,35 @@ function ProblemsPanel({ isDark, onSelectProblem }) {
                       </td>
                       
                       {/* Points Column */}
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
-                          <Coins size={13} className="text-amber-500" />
+                      <td className="py-2.5 px-4">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                          <Coins size={12} className="text-amber-500" />
                           +{getProblemPoints(p)} pts
                         </span>
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <td className="py-2.5 px-4 text-right">
+                        <div className="inline-flex items-center justify-end gap-1.5 opacity-85 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => setQuickViewProblem(p)}
-                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                            className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
                               isDark ? "text-slate-400 hover:text-white hover:bg-slate-800" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                             }`}
+                            title="Quick View"
                           >
-                            <Eye size={14} /> Quick View
+                            <Eye size={14} />
                           </button>
                           
                           <button 
                             onClick={() => onSelectProblem && onSelectProblem(p.id)}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black transition-transform hover:scale-105 shadow-sm ${
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black transition-transform hover:scale-105 shadow-xs ${
                               isDark 
-                                ? "bg-amber-400/90 text-amber-950 hover:bg-amber-400" 
+                                ? "bg-amber-400 text-amber-950 hover:bg-amber-300" 
                                 : "bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200"
                             }`}
                           >
-                            <Code2 size={14} /> Solve
+                            <Code2 size={13} /> Solve
                           </button>
                         </div>
                       </td>
