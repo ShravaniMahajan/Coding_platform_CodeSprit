@@ -20,6 +20,7 @@ public class SubmissionResponse {
     private String username;
     private Long problemId;
     private String problemTitle;
+    private String problemDifficulty;
     private String code;
     private ProgrammingLanguage language;
     private SubmissionStatus status;

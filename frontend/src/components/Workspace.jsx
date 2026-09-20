@@ -3,7 +3,7 @@ import Editor from "@monaco-editor/react";
 import {
   ChevronLeft, Play, Send, RotateCcw, CheckCircle2, XCircle,
   Clock, Lightbulb, BookOpen, List, Code2, Loader2,
-  ChevronDown, ChevronUp, AlignLeft, FileText
+  ChevronDown, ChevronUp, AlignLeft, FileText, Star, Bookmark, Save
 } from "lucide-react";
 
 const LANG_MAP = { JAVA: "java", PYTHON: "python", CPP: "cpp", JAVASCRIPT: "javascript", C: "c", SQL: "sql" };
@@ -39,16 +39,84 @@ function Workspace({ problemId, onBack }) {
   const [submitting, setSubmitting] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [submitResult, setSubmitResult] = useState(null);
+  const [testCaseResults, setTestCaseResults] = useState([]);
   const [hintsOpen, setHintsOpen] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedSubmission, setExpandedSubmission] = useState(null);
+  const [expandedTcIdx, setExpandedTcIdx] = useState(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [problemNote, setProblemNote] = useState("");
+  const [noteSavedAlert, setNoteSavedAlert] = useState(false);
+
+  // Sync favorite and note state from localStorage
+  useEffect(() => {
+    if (!problemId) return;
+    const numId = parseInt(problemId, 10);
+    const lists = JSON.parse(localStorage.getItem("user_custom_lists") || "[]");
+    const favList = lists.find(l => l.id === "favorite");
+    if (favList && favList.problemIds.includes(numId)) {
+      setIsFavorited(true);
+    }
+    const savedNotes = JSON.parse(localStorage.getItem("user_problem_notes") || "[]");
+    const existing = savedNotes.find(n => n.problemId === numId);
+    if (existing) {
+      setProblemNote(existing.content);
+    }
+  }, [problemId]);
+
+  const toggleFavorite = () => {
+    const numId = parseInt(problemId, 10);
+    const lists = JSON.parse(localStorage.getItem("user_custom_lists") || "[]");
+    let favList = lists.find(l => l.id === "favorite");
+    if (!favList) {
+      favList = { id: "favorite", name: "Favorite", icon: "star", problemIds: [], isDefault: true };
+      lists.unshift(favList);
+    }
+    if (isFavorited) {
+      favList.problemIds = favList.problemIds.filter(id => id !== numId);
+      setIsFavorited(false);
+    } else {
+      if (!favList.problemIds.includes(numId)) {
+        favList.problemIds.push(numId);
+      }
+      setIsFavorited(true);
+    }
+    localStorage.setItem("user_custom_lists", JSON.stringify(lists));
+  };
+
+  const handleSaveProblemNote = () => {
+    const numId = parseInt(problemId, 10);
+    const savedNotes = JSON.parse(localStorage.getItem("user_problem_notes") || "[]");
+    const idx = savedNotes.findIndex(n => n.problemId === numId);
+    const noteObj = {
+      problemId: numId,
+      problemNumber: numId,
+      problemTitle: problem?.title || `Problem #${numId}`,
+      description: problem?.description || "",
+      content: problemNote,
+      dateUpdated: new Date().toISOString().split("T")[0]
+    };
+    if (idx >= 0) {
+      savedNotes[idx] = noteObj;
+    } else {
+      savedNotes.unshift(noteObj);
+    }
+    localStorage.setItem("user_problem_notes", JSON.stringify(savedNotes));
+    setNoteSavedAlert(true);
+    setTimeout(() => setNoteSavedAlert(false), 3000);
+  };
 
   const getStarterCode = (lang, p) => {
     if (!p) return "// Write your code here";
-    const map = { JAVA: p.starterCodeJava, PYTHON: p.starterCodePython, CPP: p.starterCodeCpp, JAVASCRIPT: p.starterCodeJavascript };
-    if (map[lang]) return map[lang];
-    if (lang === "SQL") return "-- Write your SQL query here";
-    return "// Write your code here";
+    const map = {
+      JAVA: p.starterCodeJava || `public class Solution {\n    public static void main(String[] args) {\n        // Your Java solution here\n    }\n}`,
+      PYTHON: p.starterCodePython || `def solution():\n    # Your Python solution here\n    pass\n`,
+      CPP: p.starterCodeCpp || `#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    // Your C++ solution here\n    return 0;\n}`,
+      JAVASCRIPT: p.starterCodeJavascript || `function solution() {\n    // Your JavaScript solution here\n}\n`,
+      C: `#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n    // Your C solution here\n    return 0;\n}`,
+      SQL: "-- Write your SQL query here"
+    };
+    return map[lang] || "// Write your code here";
   };
 
   useEffect(() => {
@@ -89,18 +157,61 @@ function Workspace({ problemId, onBack }) {
     if (problem) setCode(getStarterCode(language, problem));
   }, [language]);
 
+  // Normalize output for comparison:
+  // 1. Strip all \r (Windows line endings)
+  // 2. Trim whitespace from each line
+  // 3. Remove ALL trailing empty lines
+  // So "9\r\n\n", " 9 \n", "9" all normalize to "9"
+  const normalizeOut = (s = "") => {
+    const lines = s.replace(/\r/g, "").split("\n").map(l => l.trim());
+    while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+    return lines.join("\n");
+  };
+
   const handleRun = async () => {
-    setRunning(true); setRunResult(null); setSubmitResult(null);
+    setRunning(true); setRunResult(null); setSubmitResult(null); setTestCaseResults([]);
     setConsoleOpen(true); setConsoleTab("result");
     try {
       const token = localStorage.getItem("token");
+      const h = { "Content-Type": "application/json", ...(token && { Authorization: `Bearer ${token}` }) };
+
+      // Run against custom input first
       const res = await fetch("http://localhost:8080/api/execution/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(token && { Authorization: `Bearer ${token}` }) },
+        headers: h,
         body: JSON.stringify({ problemId: problem.id, code, language, input: customInput }),
       });
       const data = await res.json();
       setRunResult({ ok: res.ok, data });
+
+      // Also run against ALL visible test cases to show pass/fail breakdown
+      if (testCases.length > 0) {
+        const tcPromises = testCases.map(tc =>
+          fetch("http://localhost:8080/api/execution/run", {
+            method: "POST",
+            headers: h,
+            body: JSON.stringify({ problemId: problem.id, code, language, input: tc.input || "" }),
+          }).then(r => r.json()).then(d => {
+            const actualNorm = normalizeOut(d.stdout || "");
+            const expectedNorm = normalizeOut(tc.expectedOutput || "");
+            const hasError = !!(d.compileError || (d.stderr && d.stderr.trim()));
+            return {
+              tc,
+              output: actualNorm,
+              rawOutput: d.stdout || "",
+              expected: expectedNorm,
+              passed: !hasError && actualNorm === expectedNorm,
+              stderr: d.stderr || "",
+              compileError: d.compileError || "",
+              timedOut: d.timedOut || false,
+              exitCode: d.exitCode,
+            };
+          }).catch(e => ({ tc, output: "", rawOutput: "", expected: normalizeOut(tc.expectedOutput || ""), passed: false, stderr: "Network error: " + e.message, compileError: "", timedOut: false, exitCode: 1 }))
+        );
+        const results = await Promise.all(tcPromises);
+        setTestCaseResults(results);
+        setExpandedTcIdx(0);
+      }
     } catch (e) { setRunResult({ ok: false, data: { error: e.message } }); }
     finally { setRunning(false); }
   };
@@ -119,6 +230,21 @@ function Workspace({ problemId, onBack }) {
       setSubmitResult({ ok: res.ok, data });
       if (res.ok) {
         setSubmissions([data]);
+        const isAccepted = data.status === "ACCEPTED" || data.status === "Accepted";
+        if (isAccepted) {
+          const currentPts = parseInt(localStorage.getItem("user_points") || "62", 10);
+          localStorage.setItem("user_points", String(currentPts + 10));
+          const hist = JSON.parse(localStorage.getItem("user_points_history") || "[]");
+          hist.unshift({
+            id: Date.now(),
+            type: "solve",
+            title: `Solved Problem: ${problem?.title || "Problem"}`,
+            points: "+10",
+            date: "Today",
+            icon: "code"
+          });
+          localStorage.setItem("user_points_history", JSON.stringify(hist));
+        }
       }
     } catch (e) { setSubmitResult({ ok: false, data: { error: e.message } }); }
     finally { setSubmitting(false); }
@@ -138,7 +264,10 @@ function Workspace({ problemId, onBack }) {
   );
 
   const hints = problem.hints ? problem.hints.split(/\n|;;|;/).filter(h => h.trim()) : [];
-  const CONSOLE_H = consoleOpen ? 220 : 44;
+  const CONSOLE_H = !consoleOpen ? 44
+    : (consoleTab === "result" && testCaseResults.length > 0) ? 420
+    : (consoleTab === "result" && (runResult || submitResult)) ? 280
+    : 200;
 
   return (
     <div className="h-screen flex flex-col bg-[#e8eaed] overflow-hidden select-none" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -150,12 +279,22 @@ function Workspace({ problemId, onBack }) {
           <ChevronLeft size={17} /> Problem List
         </button>
 
-        {/* Center: problem title */}
+        {/* Center: problem title + favorite toggle */}
         <div className="flex items-center gap-2">
           <span className="font-bold text-slate-800 text-sm truncate max-w-xs">{problem.title}</span>
           <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full border ${DIFF_STYLE[problem.difficulty] || ""}`}>
             {problem.difficulty}
           </span>
+          <button
+            onClick={toggleFavorite}
+            title={isFavorited ? "In Favorites (Click to remove)" : "Add to Favorites"}
+            className="p-1 rounded-lg hover:bg-slate-100 transition-colors ml-1"
+          >
+            <Star
+              size={17}
+              className={isFavorited ? "fill-amber-400 text-amber-500" : "text-slate-400 hover:text-amber-500"}
+            />
+          </button>
         </div>
 
         {/* Right */}
@@ -185,6 +324,7 @@ function Workspace({ problemId, onBack }) {
               { id: "description", label: "Description", icon: AlignLeft },
               { id: "editorial",   label: "Editorial",   icon: BookOpen  },
               { id: "hints",       label: `Hints (${hints.length})`, icon: Lightbulb },
+              { id: "notes",       label: "Notes",       icon: Bookmark },
               { id: "submissions", label: "Submissions", icon: List },
             ].map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setLeftTab(id)}
@@ -271,6 +411,37 @@ function Workspace({ problemId, onBack }) {
                 <BookOpen size={36} className="opacity-20" /><p>Editorial not yet available.</p>
               </div>
             ))}
+
+            {/* ── NOTES ── */}
+            {leftTab === "notes" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                    My Problem Notes
+                  </span>
+                  <button
+                    onClick={handleSaveProblemNote}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-sm"
+                  >
+                    <Save size={13} />
+                    <span>Save Note</span>
+                  </button>
+                </div>
+                {noteSavedAlert && (
+                  <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 size={14} />
+                    <span>Note saved to your Notebook!</span>
+                  </div>
+                )}
+                <textarea
+                  value={problemNote}
+                  onChange={(e) => setProblemNote(e.target.value)}
+                  rows={13}
+                  placeholder="Record key concepts, intuition, edge cases, or code snippets here. These sync directly to your Notebook in the user panel..."
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-500 leading-relaxed"
+                />
+              </div>
+            )}
 
             {/* ── SUBMISSIONS ── */}
             {leftTab === "submissions" && (submissions.length > 0 ? (
@@ -363,7 +534,7 @@ function Workspace({ problemId, onBack }) {
 
           {/* ── CONSOLE PANEL ── */}
           <div
-            className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden flex-shrink-0 transition-all duration-200"
+            className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden flex-shrink-0 transition-all duration-300"
             style={{ height: CONSOLE_H }}
           >
             {/* Console Header — always visible, clickable */}
@@ -423,54 +594,143 @@ function Workspace({ problemId, onBack }) {
                   <div className="font-mono text-sm">
                     {(running || submitting) && (
                       <div className="flex items-center gap-2 text-slate-400 text-xs">
-                        <Loader2 size={14} className="animate-spin text-blue-500" /> Running...
+                        <Loader2 size={14} className="animate-spin text-blue-500" /> Running all test cases...
                       </div>
                     )}
 
                     {runResult && !running && (
-                      <div className="space-y-4">
-                        <div className={`font-black text-sm ${runResult.ok && runResult.data?.exitCode === 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                          {runResult.ok && runResult.data?.exitCode === 0 ? "✓ Code Executed Successfully" : "✗ Execution Error"}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Input</span>
-                            <pre className="mt-1 text-xs text-slate-800 bg-slate-50 border border-slate-200 p-3 rounded-xl whitespace-pre-wrap font-mono min-h-[60px]">{customInput || "No input provided"}</pre>
-                          </div>
-                          
-                          {(() => {
-                            const matchedTc = testCases.find(tc => tc.input === customInput);
-                            return matchedTc ? (
-                              <div>
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Expected Output</span>
-                                <pre className="mt-1 text-xs text-slate-800 bg-slate-50 border border-slate-200 p-3 rounded-xl whitespace-pre-wrap font-mono min-h-[60px]">{matchedTc.expectedOutput}</pre>
+                      <div className="space-y-3">
+                        {/* Summary header */}
+                        {testCaseResults.length > 0 ? (
+                          <>
+                            <div className="flex items-center gap-3">
+                              <div className={`font-black text-sm ${
+                                testCaseResults.every(r => r.passed) ? "text-emerald-500" : "text-rose-500"
+                              }`}>
+                                {testCaseResults.every(r => r.passed)
+                                  ? `✓ All ${testCaseResults.length} Test Cases Passed`
+                                  : `✗ ${testCaseResults.filter(r => !r.passed).length} / ${testCaseResults.length} Test Cases Failed`
+                                }
                               </div>
-                            ) : null;
-                          })()}
-                        </div>
+                              <div className="flex gap-1">
+                                {testCaseResults.map((r, i) => (
+                                  <div key={i} title={`Case ${i+1}: ${r.passed ? "Passed" : "Failed"}`}
+                                    className={`w-2 h-2 rounded-full ${ r.passed ? "bg-emerald-400" : "bg-rose-500" }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
 
-                        <div>
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actual Output</span>
-                          {runResult.data?.stdout ? (
-                            <pre className="mt-1 text-xs text-slate-800 bg-slate-50 border border-slate-200 p-3 rounded-xl whitespace-pre-wrap font-mono min-h-[60px]">{runResult.data.stdout}</pre>
-                          ) : (
-                            <pre className="mt-1 text-xs text-slate-400 italic bg-slate-50 border border-slate-200 p-3 rounded-xl min-h-[60px]">No standard output.</pre>
-                          )}
-                        </div>
+                            {/* Per test case accordion */}
+                            <div className="space-y-1.5">
+                              {testCaseResults.map((r, i) => (
+                                <div key={i}
+                                  className={`rounded-xl border overflow-hidden ${
+                                    r.passed ? "border-emerald-200 bg-emerald-50/50" : "border-rose-200 bg-rose-50/50"
+                                  }`}
+                                >
+                                  <button
+                                    onClick={() => setExpandedTcIdx(expandedTcIdx === i ? null : i)}
+                                    className="w-full flex items-center justify-between px-3 py-2 text-left"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-xs font-extrabold ${ r.passed ? "text-emerald-600" : "text-rose-600" }`}>
+                                        {r.passed ? "✓" : "✗"}
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-700">Test Case {i + 1}</span>
+                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                        r.passed ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                                      }`}>
+                                        {r.passed ? "PASSED" : "FAILED"}
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400">
+                                      {expandedTcIdx === i ? "▲ hide" : "▼ show"}
+                                    </span>
+                                  </button>
 
-                        {(runResult.data?.stderr || runResult.data?.compileError) && (
-                          <div>
-                            <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider">Error Output</span>
-                            <pre className="mt-1 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl whitespace-pre-wrap font-mono min-h-[60px]">{runResult.data.stderr || runResult.data.compileError}</pre>
-                          </div>
-                        )}
-                        
-                        {!runResult.ok && runResult.data?.error && (
-                          <div>
-                            <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider">System Error</span>
-                            <pre className="mt-1 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl whitespace-pre-wrap font-mono">{runResult.data.error}</pre>
-                          </div>
+                                  {expandedTcIdx === i && (
+                                    <div className="px-3 pb-3 space-y-2 border-t border-inherit">
+                                      <div className="grid grid-cols-1 gap-2 pt-2">
+                                        <div>
+                                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Input</span>
+                                          <pre className="mt-0.5 text-[11px] bg-white border border-slate-200 p-2 rounded-lg whitespace-pre-wrap font-mono text-slate-700 max-h-28 overflow-auto">{r.tc.input || "(empty)"}</pre>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expected</span>
+                                            <pre className="mt-0.5 text-[11px] bg-white border border-emerald-200 p-2 rounded-lg whitespace-pre-wrap font-mono text-emerald-800 max-h-28 overflow-auto">{r.expected || "(empty)"}</pre>
+                                          </div>
+                                          <div>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${ r.passed ? "text-emerald-500" : "text-rose-500" }`}>Your Output</span>
+                                            <pre className={`mt-0.5 text-[11px] p-2 rounded-lg whitespace-pre-wrap break-all font-mono max-h-28 overflow-auto border ${
+                                              r.passed ? "bg-white border-emerald-200 text-emerald-800"
+                                              : r.compileError ? "bg-orange-50 border-orange-200 text-orange-800"
+                                              : r.timedOut ? "bg-yellow-50 border-yellow-200 text-yellow-800"
+                                              : "bg-rose-50 border-rose-200 text-rose-800"
+                                            }`}>
+                                              {r.compileError ? "[Compile Error — see below]"
+                                                : r.timedOut ? "[Time Limit Exceeded]"
+                                                : r.output || "(no output)"}
+                                            </pre>
+                                          </div>
+                                        </div>
+
+                                        {/* Compile Error */}
+                                        {r.compileError && (
+                                          <div className="rounded-xl border border-orange-300 bg-orange-50 p-2">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                              <span className="text-[10px] font-extrabold text-orange-600 uppercase tracking-wider">🔧 Compile Error</span>
+                                            </div>
+                                            <pre className="text-[11px] text-orange-800 whitespace-pre-wrap font-mono max-h-32 overflow-auto">{r.compileError}</pre>
+                                          </div>
+                                        )}
+
+                                        {/* Runtime Error */}
+                                        {!r.compileError && r.stderr && r.stderr.trim() && (
+                                          <div className="rounded-xl border border-rose-300 bg-rose-50 p-2">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                              <span className="text-[10px] font-extrabold text-rose-600 uppercase tracking-wider">⚡ Runtime Error</span>
+                                            </div>
+                                            <pre className="text-[11px] text-rose-800 whitespace-pre-wrap font-mono max-h-32 overflow-auto">{r.stderr}</pre>
+                                          </div>
+                                        )}
+
+                                        {/* TLE */}
+                                        {r.timedOut && (
+                                          <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-2">
+                                            <span className="text-[10px] font-extrabold text-yellow-700 uppercase tracking-wider">⏱ Time Limit Exceeded</span>
+                                            <p className="text-[11px] text-yellow-700 mt-0.5">Your code took too long to run. Optimize your algorithm.</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          /* Fallback: single run result (no test cases) */
+                          <>
+                            <div className={`font-black text-sm ${runResult.ok && runResult.data?.exitCode === 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                              {runResult.ok && runResult.data?.exitCode === 0 ? "✓ Code Executed Successfully" : "✗ Execution Error"}
+                            </div>
+                            <div>
+                              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Output</span>
+                              {runResult.data?.stdout ? (
+                                <pre className="mt-1 text-xs text-slate-800 bg-slate-50 border border-slate-200 p-3 rounded-xl whitespace-pre-wrap font-mono">{runResult.data.stdout}</pre>
+                              ) : (
+                                <pre className="mt-1 text-xs text-slate-400 italic bg-slate-50 border border-slate-200 p-3 rounded-xl">No output.</pre>
+                              )}
+                            </div>
+                            {(runResult.data?.stderr || runResult.data?.compileError) && (
+                              <div>
+                                <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider">Error</span>
+                                <pre className="mt-1 text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl whitespace-pre-wrap font-mono">{runResult.data.stderr || runResult.data.compileError}</pre>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

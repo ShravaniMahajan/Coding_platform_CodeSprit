@@ -61,8 +61,7 @@ function LanguagesSection({ onSelectSkill }) {
           {skillCategories.map((skill) => (
             <div
               key={skill.id}
-              onClick={() => onSelectSkill && onSelectSkill(skill.id, skill.name)}
-              className="group bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 flex items-center justify-start transition-all duration-200 cursor-pointer shadow-md hover:shadow-xl hover:border-blue-500/60 hover:-translate-y-1"
+              className="group bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 flex items-center justify-start transition-all duration-200 shadow-md hover:shadow-xl hover:border-blue-500/60 hover:-translate-y-1"
             >
               <div className="flex items-center gap-4">
                 <div className={`w-11 h-11 rounded-xl ${skill.iconBg} border flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-xs`}>

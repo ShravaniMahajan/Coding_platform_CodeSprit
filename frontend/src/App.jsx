@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./components/Dashboard";
@@ -9,20 +9,42 @@ import "./index.css";
 import "./App.css";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState("landing"); // landing, auth, dashboard, admin, skill-problems, workspace
+  const [currentPage, setCurrentPage] = useState("landing");
   const [authTab, setAuthTab] = useState("login");
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [selectedSkillName, setSelectedSkillName] = useState("");
   const [selectedProblem, setSelectedProblem] = useState(null);
+
+
+  // ── Auto-restore session on app load ──────────────────────────────
+  // If a valid token+user is already in localStorage, skip landing & go straight to dashboard/admin
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userRaw = localStorage.getItem("user");
+    if (token && userRaw) {
+      try {
+        const user = JSON.parse(userRaw);
+        if (user.role === "ADMIN" || user.role === "admin") {
+          setCurrentPage("admin");
+        } else {
+          setCurrentPage("dashboard");
+        }
+      } catch {
+        // Corrupt stored data — clear and stay on landing
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+    }
+  }, []);
 
   const handleOpenAuth = (tab = "login") => {
     setAuthTab(tab);
     setCurrentPage("auth");
   };
 
-  // After login → route directly based on role
+  // After login → route by role
   const handleLoginSuccess = (role) => {
-    if (role === "admin") {
+    if (role === "admin" || role === "ADMIN") {
       setCurrentPage("admin");
     } else {
       setCurrentPage("dashboard");
@@ -30,7 +52,7 @@ function App() {
   };
 
   const handleNavigate = (page) => {
-    setCurrentPage(page); // 'dashboard' | 'admin'
+    setCurrentPage(page);
   };
 
   const handleSelectSkill = (skillId, skillName) => {
@@ -40,9 +62,9 @@ function App() {
   };
 
   const handleSelectProblem = (problemId) => {
-    // Only allow if logged in, otherwise go to auth
     const token = localStorage.getItem("token");
     if (!token) {
+      // Not logged in — just show login ONCE. Upon success, they go to the Dashboard problems panel.
       handleOpenAuth("login");
       return;
     }
@@ -63,6 +85,7 @@ function App() {
           onOpenAuth={handleOpenAuth}
           onNavigate={handleNavigate}
           onSelectSkill={handleSelectSkill}
+          onSelectProblem={handleSelectProblem}
         />
       )}
       {currentPage === "auth" && (
@@ -73,14 +96,18 @@ function App() {
         />
       )}
       {currentPage === "dashboard" && (
-        <Dashboard onLogout={handleLogout} onSelectSkill={handleSelectSkill} />
+        <Dashboard
+          onLogout={handleLogout}
+          onSelectSkill={handleSelectSkill}
+          onSelectProblem={handleSelectProblem}
+        />
       )}
       {currentPage === "admin" && (
         <AdminDashboard onLogout={handleLogout} />
       )}
       {currentPage === "skill-problems" && (
-        <SkillProblems 
-          skillId={selectedSkill} 
+        <SkillProblems
+          skillId={selectedSkill}
           skillName={selectedSkillName}
           onBack={() => {
             const token = localStorage.getItem("token");
@@ -91,9 +118,12 @@ function App() {
         />
       )}
       {currentPage === "workspace" && (
-        <Workspace 
+        <Workspace
           problemId={selectedProblem}
-          onBack={() => setCurrentPage("skill-problems")}
+          onBack={() => {
+            if (selectedSkill) setCurrentPage("skill-problems");
+            else setCurrentPage("dashboard");
+          }}
         />
       )}
     </div>

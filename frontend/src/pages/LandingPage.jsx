@@ -4,11 +4,12 @@ import Hero from "../components/Hero";
 import Features from "../components/Features";
 import LanguagesSection from "../components/LanguagesSection";
 import AboutUs from "../components/AboutUs";
+import ProblemsSection from "../components/ProblemsSection";
 import ContactUs from "../components/ContactUs";
 import Footer from "../components/Footer";
 import CodeModal from "../components/CodeModal";
 
-function LandingPage({ onOpenAuth, onNavigate, onSelectSkill }) {
+function LandingPage({ onOpenAuth, onNavigate, onSelectSkill, onSelectProblem }) {
   const [codeModalOpen, setCodeModalOpen] = useState(false);
 
   const handleOpenSandbox = () => {
@@ -31,6 +32,7 @@ function LandingPage({ onOpenAuth, onNavigate, onSelectSkill }) {
         <AboutUs />
         <Features />
         <LanguagesSection onSelectSkill={onSelectSkill} />
+        <ProblemsSection onOpenAuth={onOpenAuth} onSelectProblem={onSelectProblem} />
         <ContactUs />
       </main>
 

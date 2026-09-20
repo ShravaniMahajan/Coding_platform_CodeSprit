@@ -92,6 +92,7 @@ public class SubmissionService {
                 submission.getUser() != null ? submission.getUser().getUsername() : null,
                 submission.getProblem() != null ? submission.getProblem().getId() : null,
                 submission.getProblem() != null ? submission.getProblem().getTitle() : null,
+                submission.getProblem() != null && submission.getProblem().getDifficulty() != null ? submission.getProblem().getDifficulty().name() : null,
                 submission.getCode(),
                 submission.getLanguage(),
                 submission.getStatus(),

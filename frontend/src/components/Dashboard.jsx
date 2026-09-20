@@ -1,27 +1,108 @@
-import React, { useState, useEffect } from "react";
-import { Code2, LayoutDashboard, Trophy, TrendingUp, Settings, LogOut, ChevronRight, CheckCircle2, Clock, XCircle, Flame, Target, Bell, Sun, Moon } from "lucide-react";
-import LanguagesSection from "./LanguagesSection";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Code2,
+  LayoutDashboard,
+  Trophy,
+  TrendingUp,
+  Settings,
+  LogOut,
+  ChevronRight,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Flame,
+  Target,
+  Bell,
+  Sun,
+  Moon,
+  Search,
+  Bookmark,
+  BookOpen,
+  Coins,
+  X,
+  Sparkles,
+  ExternalLink,
+  Globe,
+  Check
+} from "lucide-react";
+
+import ProblemsPanel from "./ProblemsPanel";
 import SettingsPanel from "./SettingsPanel";
 import Leaderboard from "./Leaderboard";
-import Progress from "./Progress";
+import UserProfileDropdown from "./userpanel/UserProfileDropdown";
+import MyListsView from "./userpanel/MyListsView";
+import ProgressView from "./userpanel/ProgressView";
+import NotebookView from "./userpanel/NotebookView";
+import PointsView from "./userpanel/PointsView";
 
-const diffColor = { Easy: "text-emerald-600 bg-emerald-50 border-emerald-200", Medium: "text-amber-600 bg-amber-50 border-amber-200", Hard: "text-rose-600 bg-rose-50 border-rose-200" };
-const statusConfig = {
-  "Accepted": { icon: <CheckCircle2 size={14} className="text-emerald-500" />, label: "AC", color: "text-emerald-600" },
-  "ACCEPTED": { icon: <CheckCircle2 size={14} className="text-emerald-500" />, label: "AC", color: "text-emerald-600" },
-  "Wrong Answer": { icon: <XCircle size={14} className="text-rose-500" />, label: "WA", color: "text-rose-600" },
-  "WRONG_ANSWER": { icon: <XCircle size={14} className="text-rose-500" />, label: "WA", color: "text-rose-600" },
-  "Time Limit Exceeded": { icon: <Clock size={14} className="text-amber-500" />, label: "TLE", color: "text-amber-600" },
-  "TIME_LIMIT_EXCEEDED": { icon: <Clock size={14} className="text-amber-500" />, label: "TLE", color: "text-amber-600" },
+const diffColor = {
+  Easy: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800",
+  Medium: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800",
+  Hard: "text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800"
 };
 
-function Dashboard({ onLogout, onSelectSkill }) {
-  const [activeNav, setActiveNav] = useState("dashboard");
-  const [stats, setStats] = useState({ solved: 0, total: 500, easy: 0, medium: 0, hard: 0, streak: 0, rank: 0, submissions: 0, accuracy: 0 });
+const statusConfig = {
+  "Accepted": { icon: <CheckCircle2 size={14} className="text-emerald-500" />, label: "AC", color: "text-emerald-600 dark:text-emerald-400" },
+  "ACCEPTED": { icon: <CheckCircle2 size={14} className="text-emerald-500" />, label: "AC", color: "text-emerald-600 dark:text-emerald-400" },
+  "Wrong Answer": { icon: <XCircle size={14} className="text-rose-500" />, label: "WA", color: "text-rose-600 dark:text-rose-400" },
+  "WRONG_ANSWER": { icon: <XCircle size={14} className="text-rose-500" />, label: "WA", color: "text-rose-600 dark:text-rose-400" },
+  "Time Limit Exceeded": { icon: <Clock size={14} className="text-amber-500" />, label: "TLE", color: "text-amber-600 dark:text-amber-400" },
+  "TIME_LIMIT_EXCEEDED": { icon: <Clock size={14} className="text-amber-500" />, label: "TLE", color: "text-amber-600 dark:text-amber-400" },
+};
+
+function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
+  const [activeNav, setActiveNav] = useState("problems");
+  const [settingsSection, setSettingsSection] = useState("profile");
+  const [userRank, setUserRank] = useState(null);
+  const [stats, setStats] = useState({
+    solved: 0,
+    total: 500,
+    easy: 0,
+    medium: 0,
+    hard: 0,
+    streak: 0,
+    rank: 0,
+    submissions: 0,
+    accuracy: 0
+  });
   const [recentSubmissions, setRecentSubmissions] = useState([]);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
 
-  const user = JSON.parse(localStorage.getItem("user") || '{"username":"User"}');
+  // User popover & notifications popover state
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  // Search in header
+  const [headerSearchQuery, setHeaderSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [allProblems, setAllProblems] = useState([]);
+
+  // User points
+  const [userPoints, setUserPoints] = useState(() => {
+    const saved = localStorage.getItem("user_points");
+    return saved ? parseInt(saved, 10) : 62;
+  });
+
+  const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
+  const searchRef = useRef(null);
+
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    const baseUser = storedUser ? JSON.parse(storedUser) : { username: "ShravaniMahajan", email: "shravani@example.com" };
+    const savedSettings = JSON.parse(localStorage.getItem("userSettings") || "{}");
+    return {
+      ...baseUser,
+      displayName: savedSettings.displayName || baseUser.username
+    };
+  });
+
+  // Notifications state
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: "Daily Challenge Available", desc: "Solve today's question to keep your streak alive!", time: "1h ago", unread: true },
+    { id: 2, title: "Submission Accepted", desc: "Your solution for 796. Rotate String was accepted with 0ms!", time: "Jul 15", unread: true },
+    { id: 3, title: "Weekly Contest 380", desc: "Registration is now open. Contest starts Saturday.", time: "2d ago", unread: false }
+  ]);
 
   // Apply theme to <html>
   useEffect(() => {
@@ -34,21 +115,68 @@ function Dashboard({ onLogout, onSelectSkill }) {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  // Close dropdowns on outside click
   useEffect(() => {
-    const fetchUserSubmissions = async () => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsUserDropdownOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotificationOpen(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Fetch submissions, problems, and leaderboard rank
+  useEffect(() => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) return;
-        const res = await fetch("http://localhost:8080/api/submissions/user", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const headers = { ...(token && { Authorization: `Bearer ${token}` }) };
+
+        const [sRes, pRes, lRes] = await Promise.all([
+          fetch("http://localhost:8080/api/submissions/user", { headers }).catch(() => null),
+          fetch("http://localhost:8080/api/problems", { headers }).catch(() => null),
+          fetch("http://localhost:8080/api/leaderboard/global", { headers }).catch(() => null)
+        ]);
+
+        if (pRes && pRes.ok) {
+          const pData = await pRes.json();
+          setAllProblems(pData);
+        }
+
+        // Find current user's rank from leaderboard
+        let rank = 0;
+        if (lRes && lRes.ok) {
+          const lData = await lRes.json();
+          const storedUser = localStorage.getItem("user");
+          const currentUser = storedUser ? JSON.parse(storedUser) : null;
+          if (currentUser) {
+            const found = lData.find(
+              (e) =>
+                e.username === currentUser.username ||
+                e.userId === currentUser.id
+            );
+            if (found) {
+              rank = found.rank;
+              setUserRank(rank);
+            }
+          }
+        }
+
+        if (sRes && sRes.ok) {
+          const data = await sRes.json();
           data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           const formatted = data.slice(0, 5).map((s, idx) => ({
             id: s.id || idx,
-            problem: s.problemTitle || "Problem",
-            difficulty: "Medium",
+            problemId: s.problemId || s.problem?.id,
+            problem: s.problemTitle || s.problem?.title || "Problem",
+            difficulty: s.problem?.difficulty || "Medium",
             status: s.status || "Accepted",
             lang: s.language || "Java",
             date: new Date(s.createdAt || s.timestamp).toLocaleDateString()
@@ -56,32 +184,65 @@ function Dashboard({ onLogout, onSelectSkill }) {
           setRecentSubmissions(formatted);
           const accepted = data.filter(s => s.status === "ACCEPTED" || s.status === "Accepted");
           setStats({
-            solved: accepted.length, total: 500,
-            easy: 0, medium: accepted.length, hard: 0, streak: 0, rank: 0,
+            solved: accepted.length,
+            total: 500,
+            easy: 0,
+            medium: accepted.length,
+            hard: 0,
+            streak: 0,
+            rank: rank,
             submissions: data.length,
             accuracy: data.length > 0 ? Math.round((accepted.length / data.length) * 100) : 0
           });
         }
       } catch (err) {
-        console.error("Failed to fetch submissions:", err);
+        console.error("Failed to fetch data:", err);
       }
     };
-    fetchUserSubmissions();
+    fetchData();
   }, []);
 
   const solvedPercent = Math.round((stats.solved / stats.total) * 100) || 0;
+
   const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "problems", label: "Problems", icon: Code2 },
-    { id: "leaderboard", label: "Leaderboard", icon: Trophy },
+    { id: "lists", label: "My Lists", icon: Bookmark },
+    { id: "notebook", label: "Notebook", icon: BookOpen },
     { id: "progress", label: "Progress", icon: TrendingUp },
+    { id: "points", label: "Points", icon: Coins },
+    { id: "leaderboard", label: "Leaderboard", icon: Trophy },
     { id: "settings", label: "Settings", icon: Settings },
   ];
+
   const statCards = [
-    { label: "Problems Solved", value: stats.solved, sub: `of ${stats.total} total`, icon: CheckCircle2, iconClass: "bg-blue-50 text-blue-600", border: "border-blue-100" },
-    { label: "Current Streak", value: `${stats.streak}d`, sub: "Keep it up!", icon: Flame, iconClass: "bg-orange-50 text-orange-600", border: "border-orange-100" },
-    { label: "Global Rank", value: `#${stats.rank.toLocaleString() || "—"}`, sub: "Top 5%", icon: Trophy, iconClass: "bg-amber-50 text-amber-600", border: "border-amber-100" },
-    { label: "Accuracy", value: `${stats.accuracy}%`, sub: `${stats.submissions} submissions`, icon: Target, iconClass: "bg-emerald-50 text-emerald-600", border: "border-emerald-100" },
+    {
+      label: "Problems Solved", value: stats.solved, sub: `of ${stats.total} total`,
+      icon: CheckCircle2, iconClass: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
+      border: "border-blue-100 dark:border-blue-900/40",
+      progress: Math.min(100, Math.round((stats.solved / stats.total) * 100)),
+      barColor: "bg-blue-500"
+    },
+    {
+      label: "Current Streak", value: `${stats.streak}d`, sub: "Keep it up!",
+      icon: Flame, iconClass: "bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400",
+      border: "border-orange-100 dark:border-orange-900/40",
+      progress: Math.min(100, Math.round((stats.streak / 30) * 100)),
+      barColor: "bg-orange-500"
+    },
+    {
+      label: "Global Rank", value: `#${stats.rank.toLocaleString() || "—"}`, sub: "Top 5%",
+      icon: Trophy, iconClass: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
+      border: "border-amber-100 dark:border-amber-900/40",
+      progress: stats.rank > 0 ? Math.max(5, 100 - Math.round((stats.rank / 1000) * 100)) : 0,
+      barColor: "bg-amber-500"
+    },
+    {
+      label: "Accuracy", value: `${stats.accuracy}%`, sub: `${stats.submissions} submissions`,
+      icon: Target, iconClass: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
+      border: "border-emerald-100 dark:border-emerald-900/40",
+      progress: Math.min(100, stats.accuracy),
+      barColor: "bg-emerald-500"
+    },
   ];
 
   const isDark = theme === "dark";
@@ -92,174 +253,286 @@ function Dashboard({ onLogout, onSelectSkill }) {
   const text = isDark ? "text-slate-100" : "text-slate-900";
   const subtext = isDark ? "text-slate-400" : "text-slate-500";
 
+  // Filter problems for header search
+  const searchedProblems = headerSearchQuery.trim()
+    ? allProblems
+        .filter(p =>
+          p.title.toLowerCase().includes(headerSearchQuery.toLowerCase()) ||
+          String(p.id).includes(headerSearchQuery)
+        )
+        .slice(0, 6)
+    : [];
+
+  const unreadCount = notifications.filter(n => n.unread).length;
+
   return (
     <div className={`min-h-screen ${bg} flex transition-colors duration-300`}>
       {/* Sidebar */}
       <aside className={`w-64 hidden md:flex flex-col ${sidebar} border-r shadow-sm fixed h-full z-30 transition-colors duration-300`}>
         <div className={`h-16 flex items-center gap-2.5 px-6 border-b ${isDark ? "border-slate-700" : "border-slate-100"}`}>
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20">
             <Code2 size={16} className="text-white" />
           </div>
-          <span className={`font-bold text-lg ${text}`}>Code<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Sphere</span></span>
+          <span className={`font-bold text-lg ${text}`}>
+            Code<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Sphere</span>
+          </span>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setActiveNav(id)}
+            <button
+              key={id}
+              onClick={() => setActiveNav(id)}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                 activeNav === id
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                  : isDark ? "text-slate-400 hover:text-white hover:bg-slate-700" : "text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-              }`}>
-              <Icon size={18} />{label}
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none"
+                  : isDark
+                  ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                  : "text-slate-600 hover:text-blue-600 hover:bg-blue-50"
+              }`}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
               {activeNav === id && <ChevronRight size={14} className="ml-auto" />}
             </button>
           ))}
         </nav>
-        <div className={`px-3 py-4 border-t ${isDark ? "border-slate-700" : "border-slate-100"} space-y-2`}>
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">{user.username?.[0]?.toUpperCase() || "U"}</span>
-            </div>
-            <div className="min-w-0">
-              <div className={`text-sm font-semibold truncate ${text}`}>{user.username}</div>
-              <div className={`text-xs truncate ${subtext}`}>{user.email || "Member"}</div>
-            </div>
-          </div>
-          <button onClick={onLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-500 hover:bg-rose-50 rounded-xl font-medium transition-all">
-            <LogOut size={16} />Sign Out
-          </button>
+
+        {/* Go to Site */}
+        <div className={`px-3 pb-4 border-t ${isDark ? "border-slate-700" : "border-slate-100"} pt-3`}>
+          <a
+            href="/"
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+              isDark
+                ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                : "text-slate-600 hover:text-blue-600 hover:bg-blue-50"
+            }`}
+          >
+            <Globe size={18} />
+            <span>Go to Site</span>
+            <ExternalLink size={13} className="ml-auto opacity-60 group-hover:opacity-100" />
+          </a>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main Container */}
       <main className="flex-1 md:ml-64">
-        <header className={`h-16 ${headerBg} border-b flex items-center justify-between px-6 sticky top-0 z-20 shadow-sm transition-colors duration-300`}>
-          <h1 className={`text-lg font-black ${text}`}>
-            {navItems.find(n => n.id === activeNav)?.label || "Dashboard"}
+        {/* Header matching Screenshot 1 */}
+        <header className={`h-16 ${headerBg} border-b flex items-center justify-between px-6 sticky top-0 z-40 shadow-sm transition-colors duration-300`}>
+          {/* Current Page Title */}
+          <h1 className={`text-lg font-black ${text} capitalize`}>
+            {activeNav === "dashboard" ? "" : navItems.find((n) => n.id === activeNav)?.label || ""}
           </h1>
+
+          {/* Right Header Elements matching Screenshot 1: Search, Bell, Streak Fire, Avatar */}
           <div className="flex items-center gap-3">
-            {/* Theme toggle button */}
+            {/* 1. Search Bar matching Screenshot 1 */}
+            <div className="relative" ref={searchRef}>
+              <div className="relative flex items-center">
+                <Search size={15} className="absolute left-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={headerSearchQuery}
+                  onFocus={() => setIsSearchOpen(true)}
+                  onChange={(e) => {
+                    setHeaderSearchQuery(e.target.value);
+                    setIsSearchOpen(true);
+                  }}
+                  placeholder="Search"
+                  className="w-36 sm:w-56 pl-9 pr-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs border border-transparent focus:border-blue-400 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none transition-all"
+                />
+              </div>
+
+              {/* Quick Search Dropdown */}
+              {isSearchOpen && headerSearchQuery.trim() && (
+                <div className="absolute right-0 top-10 w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 overflow-hidden">
+                  <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Matching Problems
+                  </div>
+                  {searchedProblems.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-slate-400">
+                      No problems found.
+                    </div>
+                  ) : (
+                    searchedProblems.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setIsSearchOpen(false);
+                          setHeaderSearchQuery("");
+                          if (onSelectProblem) onSelectProblem(p.id);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-between text-xs transition-colors"
+                      >
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          {p.id}. {p.title}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium ml-2">
+                          {p.difficulty}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Notification Bell matching Screenshot 1 */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className={`relative p-2 rounded-xl transition-colors ${
+                  isDark
+                    ? "hover:bg-slate-800 text-slate-300"
+                    : "hover:bg-slate-100 text-slate-600"
+                }`}
+                title="Notifications"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {isNotificationOpen && (
+                <div className="absolute right-0 top-12 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-3 z-50">
+                  <div className="flex items-center justify-between px-4 pb-2 border-b border-slate-100 dark:border-slate-700">
+                    <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                      Notifications
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setNotifications(notifications.map(n => ({ ...n, unread: false })));
+                      }}
+                      className="text-[11px] text-blue-500 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700/60 max-h-72 overflow-y-auto">
+                    {notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`p-3 text-xs hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors ${
+                          n.unread ? "bg-blue-50/40 dark:bg-blue-950/20" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">
+                            {n.title}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{n.time}</span>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                          {n.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Streak Flame with Counter matching Screenshot 1 */}
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200/70 dark:border-orange-800/60 text-orange-600 dark:text-orange-400 text-xs font-black cursor-pointer hover:scale-105 transition-transform"
+              title="Current Daily Streak"
+              onClick={() => setActiveNav("progress")}
+            >
+              <Flame size={16} className="text-orange-500 fill-orange-500 animate-pulse" />
+              <span>{stats.streak}</span>
+            </div>
+
+            {/* Theme Toggle Button */}
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}
-              className={`p-2 rounded-xl transition-colors ${isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-100 text-slate-500"}`}
+              className={`p-2 rounded-xl transition-colors ${
+                isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-100 text-slate-500"
+              }`}
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-500">
-              <Bell size={18} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full" />
-            </button>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center cursor-pointer">
-              <span className="text-white font-bold text-sm">{user.username?.[0]?.toUpperCase() || "U"}</span>
+
+            {/* 4. User Avatar Button & Dropdown matching Screenshot 1 */}
+            <div className="relative" ref={dropdownRef}>
+              <div
+                onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center cursor-pointer ring-2 ring-transparent hover:ring-blue-400 dark:hover:ring-blue-500 transition-all shadow-sm"
+              >
+                <span className="text-white font-bold text-sm">
+                  {(user.displayName || user.username || "S")[0].toUpperCase()}
+                </span>
+              </div>
+
+              {/* User Profile Popover Modal */}
+              {isUserDropdownOpen && (
+                <UserProfileDropdown
+                  user={user}
+                  points={userPoints}
+                  rank={userRank}
+                  accuracy={stats.accuracy}
+                  problemsSolved={stats.solved}
+                  isDark={isDark}
+                  onNavigate={(tab) => {
+                    if (tab === "settings") {
+                      setSettingsSection("profile"); // Edit Profile → open Profile tab
+                    }
+                    setActiveNav(tab === "settings" ? "settings" : tab);
+                    setIsUserDropdownOpen(false);
+                  }}
+                  onLogout={onLogout}
+                  onClose={() => setIsUserDropdownOpen(false)}
+                />
+              )}
             </div>
           </div>
         </header>
 
+        {/* View Routing */}
         <div className="p-6 space-y-6">
-          {activeNav === "dashboard" && (
-            // ... (keep existing dashboard content, but I need to include it correctly or do it by chunk)
-            // Wait, I should replace a larger chunk. Let me do this carefully.
+          {/* Problems View */}
+          {activeNav === "problems" && <ProblemsPanel isDark={isDark} onSelectProblem={onSelectProblem} />}
 
-            <>
-              {/* Stat cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {statCards.map((card, i) => {
-                  const Icon = card.icon;
-                  return (
-                    <div key={i} className={`${cardBg} rounded-2xl border ${isDark ? "border-slate-700" : card.border} p-5 shadow-sm hover:shadow-md transition-shadow`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={`text-sm font-medium ${subtext}`}>{card.label}</span>
-                        <div className={`w-9 h-9 rounded-xl ${card.iconClass} flex items-center justify-center`}><Icon size={18} /></div>
-                      </div>
-                      <div className={`text-2xl font-black ${text}`}>{card.value}</div>
-                      <div className={`text-xs mt-1 ${subtext}`}>{card.sub}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Progress by difficulty */}
-                <div className={`${cardBg} rounded-2xl border ${isDark ? "border-slate-700" : "border-slate-100"} p-6 shadow-sm`}>
-                  <h2 className={`font-bold ${text} mb-5`}>Solved by Difficulty</h2>
-                  <div className="flex justify-center mb-6">
-                    <div className="relative w-32 h-32">
-                      <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" r="15.9" fill="none" stroke={isDark ? "#334155" : "#f1f5f9"} strokeWidth="2.5" />
-                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="#7c3aed" strokeWidth="2.5"
-                          strokeDasharray={`${solvedPercent} ${100 - solvedPercent}`} strokeLinecap="round" />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className={`text-2xl font-black ${text}`}>{stats.solved}</span>
-                        <span className={`text-xs ${subtext}`}>solved</span>
-                      </div>
-                    </div>
-                  </div>
-                  {[
-                    { label: "Easy", value: stats.easy, total: 150, barColor: "bg-emerald-500", textColor: "text-emerald-600" },
-                    { label: "Medium", value: stats.medium, total: 250, barColor: "bg-amber-500", textColor: "text-amber-600" },
-                    { label: "Hard", value: stats.hard, total: 100, barColor: "bg-rose-500", textColor: "text-rose-600" },
-                  ].map((d) => (
-                    <div key={d.label} className="mb-3">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className={`font-semibold ${d.textColor}`}>{d.label}</span>
-                        <span className={subtext}>{d.value}/{d.total}</span>
-                      </div>
-                      <div className={`h-2 ${isDark ? "bg-slate-700" : "bg-slate-100"} rounded-full overflow-hidden`}>
-                        <div className={`h-full ${d.barColor} rounded-full`} style={{ width: `${(d.value / d.total) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Recent Submissions */}
-                <div className={`lg:col-span-2 ${cardBg} rounded-2xl border ${isDark ? "border-slate-700" : "border-slate-100"} p-6 shadow-sm`}>
-                  <div className="flex items-center justify-between mb-5">
-                    <h2 className={`font-bold ${text}`}>Recent Submissions</h2>
-                    <button className="text-xs text-blue-500 font-medium hover:underline">View All</button>
-                  </div>
-                  <div className="space-y-1">
-                    {recentSubmissions.length === 0 ? (
-                      <div className={`text-sm ${subtext} text-center py-4`}>No recent submissions</div>
-                    ) : recentSubmissions.map((sub) => {
-                      const sc = statusConfig[sub.status] || statusConfig["Accepted"];
-                      return (
-                        <div key={sub.id} className={`flex items-center justify-between py-3 border-b ${isDark ? "border-slate-700" : "border-slate-50"} last:border-0`}>
-                          <div className="flex items-center gap-3 min-w-0">
-                            {sc.icon}
-                            <div className="min-w-0">
-                              <div className={`font-medium text-sm truncate ${text}`}>{sub.problem}</div>
-                              <div className={`text-xs mt-0.5 ${subtext}`}>{sub.lang} · {sub.date}</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${diffColor[sub.difficulty]}`}>{sub.difficulty}</span>
-                            <span className={`text-xs font-bold ${sc.color}`}>{sc.label}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </>
+          {/* 3. My Lists View (matching Screenshot 2) */}
+          {activeNav === "lists" && (
+            <MyListsView isDark={isDark} onSelectProblem={onSelectProblem} />
           )}
 
-          {activeNav === "problems" && <LanguagesSection onSelectSkill={onSelectSkill} />}
+          {/* 4. Notebook View (matching Screenshot 4) */}
+          {activeNav === "notebook" && (
+            <NotebookView isDark={isDark} onSelectProblem={onSelectProblem} />
+          )}
 
-          {activeNav === "leaderboard" && <Leaderboard isDark={isDark} />}
-          
+          {/* 5. Progress View (matching Screenshot 3) */}
           {activeNav === "progress" && (
-            <Progress stats={stats} recentSubmissions={recentSubmissions} isDark={isDark} />
+            <ProgressView isDark={isDark} onSelectProblem={onSelectProblem} />
           )}
 
+          {/* 6. Points & Rewards View (matching Screenshot 5) */}
+          {activeNav === "points" && <PointsView isDark={isDark} />}
+
+          {/* 7. Leaderboard View */}
+          {activeNav === "leaderboard" && <Leaderboard isDark={isDark} />}
+
+          {/* 8. Settings View */}
           {activeNav === "settings" && (
             <SettingsPanel
               theme={theme}
               onThemeChange={setTheme}
               onLogout={onLogout}
               user={user}
+              initialSection={settingsSection}
+              onSettingsSaved={() => {
+                const storedUser = localStorage.getItem("user");
+                const baseUser = storedUser ? JSON.parse(storedUser) : { username: "ShravaniMahajan", email: "shravani@example.com" };
+                const savedSettings = JSON.parse(localStorage.getItem("userSettings") || "{}");
+                setUser({
+                  ...baseUser,
+                  displayName: savedSettings.displayName || baseUser.username
+                });
+              }}
             />
           )}
         </div>

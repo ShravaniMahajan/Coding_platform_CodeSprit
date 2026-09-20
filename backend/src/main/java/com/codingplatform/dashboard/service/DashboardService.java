@@ -302,7 +302,8 @@ Long userId) {
 
 List<LeaderboardEntry> entries =
 leaderboardRepository
-        .findAllByOrderByTotalScoreDescProblemsSolvedDesc();
+        .findAllByUserRoleOrderByTotalScoreDescProblemsSolvedDesc(
+                com.codingplatform.common.Role.USER);
 
 
 for (int i = 0; i < entries.size(); i++) {

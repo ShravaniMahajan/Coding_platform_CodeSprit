@@ -74,7 +74,7 @@ function SkillProblems({ skillId, skillName, onBack, onSelectProblem }) {
                 </div>
                 <div className="text-slate-600 text-sm">
                   {/* Clean up HTML tags for preview or show first sentence */}
-                  {problem.description.replace(/<[^>]*>?/gm, '').substring(0, 80)}...
+                  {(problem.description || "").replace(/<[^>]*>?/gm, '').substring(0, 80)}...
                 </div>
               </div>
               

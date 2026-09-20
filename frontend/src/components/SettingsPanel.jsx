@@ -48,10 +48,10 @@ function SettingRow({ label, description, children }) {
   );
 }
 
-function SettingsPanel({ theme, onThemeChange, onLogout, user }) {
+function SettingsPanel({ theme, onThemeChange, onLogout, user, initialSection, onSettingsSaved }) {
   const savedSettings = JSON.parse(localStorage.getItem("userSettings") || "{}");
 
-  const [activeSection, setActiveSection] = useState("appearance");
+  const [activeSection, setActiveSection] = useState(initialSection || "appearance");
   const [notifications, setNotifications] = useState({
     emailAlerts: savedSettings.emailAlerts ?? true,
     submissionResults: savedSettings.submissionResults ?? true,
@@ -68,7 +68,7 @@ function SettingsPanel({ theme, onThemeChange, onLogout, user }) {
     compactMode: savedSettings.compactMode ?? false,
   });
   const [profile, setProfile] = useState({
-    displayName: user?.username || "",
+    displayName: savedSettings.displayName || user?.displayName || user?.username || "",
     bio: savedSettings.bio || "",
     github: savedSettings.github || "",
     linkedin: savedSettings.linkedin || "",
@@ -86,6 +86,7 @@ function SettingsPanel({ theme, onThemeChange, onLogout, user }) {
   const handleSave = () => {
     const settings = { ...notifications, ...preferences, ...profile };
     localStorage.setItem("userSettings", JSON.stringify(settings));
+    if (onSettingsSaved) onSettingsSaved();
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };

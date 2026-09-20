@@ -137,36 +137,47 @@ function OverviewSection({ users, problems, submissions, assessments, onNavigate
 function ProblemsSection({ problems, onRefresh, showToast }) {
   const [search, setSearch] = useState("");
   const [diffFilter, setDiffFilter] = useState("ALL");
+  const [trackFilter, setTrackFilter] = useState("ALL");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProb, setEditingProb] = useState(null);
 
   const [formData, setFormData] = useState({
-    title: "", description: "", difficulty: "EASY", language: "ALL", constraints: "", sampleInput: "", sampleOutput: "", tags: "Algorithms"
+    title: "", description: "", difficulty: "EASY", language: "ALL", constraints: "", sampleInput: "", sampleOutput: "", tags: "Algorithms", topic: "Arrays", track: "DSA"
   });
+
+  const isSql = (p) => {
+    const topic = (p.topic || "").toLowerCase();
+    const title = (p.title || "").toLowerCase();
+    return topic.includes("sql") || title.includes("sql");
+  };
 
   const filtered = problems.filter((p) => {
     const matchSearch = p.title?.toLowerCase().includes(search.toLowerCase());
     const matchDiff = diffFilter === "ALL" || p.difficulty === diffFilter;
-    return matchSearch && matchDiff;
+    const matchTrack = trackFilter === "ALL" || (trackFilter === "SQL" ? isSql(p) : !isSql(p));
+    return matchSearch && matchDiff && matchTrack;
   });
 
   const handleOpenAdd = () => {
     setEditingProb(null);
-    setFormData({ title: "", description: "", difficulty: "EASY", language: "ALL", constraints: "", sampleInput: "", sampleOutput: "", tags: "Algorithms" });
+    setFormData({ title: "", description: "", difficulty: "EASY", language: "ALL", constraints: "", sampleInput: "", sampleOutput: "", tags: "Algorithms", topic: "Arrays", track: "DSA" });
     setShowAddModal(true);
   };
 
   const handleOpenEdit = (p) => {
     setEditingProb(p);
+    const pIsSql = isSql(p);
     setFormData({
       title: p.title || "",
       description: p.description || "",
       difficulty: p.difficulty || "EASY",
-      language: p.language || "ALL",
+      language: p.language || (pIsSql ? "SQL" : "ALL"),
       constraints: p.constraints || "",
       sampleInput: p.sampleInput || "",
       sampleOutput: p.sampleOutput || "",
-      tags: p.tags || "Algorithms"
+      tags: p.tags || p.topic || "Algorithms",
+      topic: p.topic || (pIsSql ? "SQL" : "Arrays"),
+      track: pIsSql ? "SQL" : "DSA"
     });
     setShowAddModal(true);
   };
@@ -176,7 +187,11 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
     try {
       const url = editingProb ? `http://localhost:8080/api/problems/${editingProb.id}` : "http://localhost:8080/api/problems";
       const method = editingProb ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: apiHeaders(), body: JSON.stringify(formData) });
+      const payload = {
+        ...formData,
+        topic: formData.track === "SQL" ? (formData.topic.toLowerCase().includes("sql") ? formData.topic : `SQL, ${formData.topic}`) : (formData.topic || "Arrays")
+      };
+      const res = await fetch(url, { method, headers: apiHeaders(), body: JSON.stringify(payload) });
       if (!res.ok) throw new Error("Failed to save problem");
       showToast(editingProb ? "Problem updated!" : "Problem created!");
       setShowAddModal(false);
@@ -217,6 +232,15 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
           </div>
 
           <select
+            value={trackFilter} onChange={(e) => setTrackFilter(e.target.value)}
+            className="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 font-semibold text-slate-700 focus:outline-none"
+          >
+            <option value="ALL">All Tracks</option>
+            <option value="DSA">Data Structures & Algorithms</option>
+            <option value="SQL">SQL & Databases</option>
+          </select>
+
+          <select
             value={diffFilter} onChange={(e) => setDiffFilter(e.target.value)}
             className="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 font-semibold text-slate-700 focus:outline-none"
           >
@@ -239,7 +263,7 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
               <th className="text-left py-3 px-4 text-xs font-bold uppercase">#</th>
               <th className="text-left py-3 px-4 text-xs font-bold uppercase">Title</th>
               <th className="text-left py-3 px-4 text-xs font-bold uppercase">Difficulty</th>
-              <th className="text-left py-3 px-4 text-xs font-bold uppercase">Language</th>
+              <th className="text-left py-3 px-4 text-xs font-bold uppercase">Track</th>
               <th className="text-left py-3 px-4 text-xs font-bold uppercase">Category / Tags</th>
               <th className="text-right py-3 px-4 text-xs font-bold uppercase">Actions</th>
             </tr>
@@ -254,8 +278,14 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
                     {p.difficulty}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-xs font-semibold text-slate-600">{p.language || "All Languages"}</td>
-                <td className="py-3 px-4 text-xs text-slate-500">{p.tags || "Algorithms"}</td>
+                <td className="py-3 px-4">
+                  <span className={`px-2 py-0.5 text-[11px] font-bold rounded-md ${
+                    isSql(p) ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}>
+                    {isSql(p) ? "SQL & Databases" : "Data Structures"}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-xs font-medium text-slate-700">{p.topic || p.tags || "General"}</td>
                 <td className="py-3 px-4">
                   <div className="flex items-center justify-end gap-2">
                     <button onClick={() => handleOpenEdit(p)} className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit Problem">
@@ -294,7 +324,27 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Problem Track</label>
+                  <select
+                    value={formData.track}
+                    onChange={(e) => {
+                      const trk = e.target.value;
+                      setFormData({
+                        ...formData,
+                        track: trk,
+                        topic: trk === "SQL" ? "SQL" : (formData.topic === "SQL" ? "Arrays" : formData.topic),
+                        language: trk === "SQL" ? "SQL" : "ALL"
+                      });
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-slate-700 text-xs focus:outline-none"
+                  >
+                    <option value="DSA">Data Structures</option>
+                    <option value="SQL">SQL & Databases</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Difficulty</label>
                   <select
@@ -306,8 +356,9 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
                     <option value="HARD">Hard</option>
                   </select>
                 </div>
+
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Assigned Language</label>
+                  <label className="block font-bold text-slate-700 mb-1">Language</label>
                   <select
                     value={formData.language} onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-slate-700 text-xs focus:outline-none"
@@ -321,6 +372,15 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
                     <option value="SQL">SQL</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category / Topics (Comma-separated)</label>
+                <input
+                  type="text" required value={formData.topic} onChange={(e) => setFormData({ ...formData, topic: e.target.value, tags: e.target.value })}
+                  placeholder="e.g. Arrays, Hash Table or Stack, Strings or SQL"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 text-xs focus:outline-none focus:border-blue-600 font-medium"
+                />
               </div>
 
               <div>
@@ -392,16 +452,10 @@ function TestCasesSection({ problems, showToast }) {
         const data = await res.json();
         setTestCases(data);
       } else {
-        setTestCases([
-          { id: 101, input: "[2,7,11,15], target=9", expectedOutput: "[0,1]", hidden: false },
-          { id: 102, input: "[3,2,4], target=6", expectedOutput: "[1,2]", hidden: true },
-        ]);
+        setTestCases([]);
       }
     } catch {
-      setTestCases([
-        { id: 101, input: "[2,7,11,15], target=9", expectedOutput: "[0,1]", hidden: false },
-        { id: 102, input: "[3,2,4], target=6", expectedOutput: "[1,2]", hidden: true },
-      ]);
+      setTestCases([]);
     }
   }, [selectedProbId]);
 
@@ -409,36 +463,47 @@ function TestCasesSection({ problems, showToast }) {
 
   const handleAddTestCase = async (e) => {
     e.preventDefault();
+    if (!inputVal.trim() || !outputVal.trim()) return;
     try {
       const res = await fetch("http://localhost:8080/api/testcases", {
         method: "POST", headers: apiHeaders(),
-        body: JSON.stringify({ problemId: selectedProbId, input: inputVal, expectedOutput: outputVal, hidden: isHidden })
+        body: JSON.stringify({ 
+          problemId: Number(selectedProbId), 
+          input: inputVal, 
+          expectedOutput: outputVal, 
+          hidden: isHidden 
+        })
       });
       if (res.ok) {
         showToast("Test case added successfully!");
+        setInputVal(""); setOutputVal(""); setIsHidden(false);
+        fetchTestCases();
       } else {
-        setTestCases([...testCases, { id: Date.now(), input: inputVal, expectedOutput: outputVal, hidden: isHidden }]);
-        showToast("Test case added!");
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.message || "Failed to add test case", "error");
       }
-      setInputVal(""); setOutputVal(""); setIsHidden(false);
-    } catch {
-      setTestCases([...testCases, { id: Date.now(), input: inputVal, expectedOutput: outputVal, hidden: isHidden }]);
-      showToast("Test case added!");
-      setInputVal(""); setOutputVal(""); setIsHidden(false);
+    } catch (err) {
+      showToast("Error adding test case", "error");
     }
   };
 
-  const handleValidate = () => {
-    setValidating(true);
-    setTimeout(() => {
-      setValidating(false);
-      setValidRes({ status: "PASS", message: "Test case syntax & output format validated successfully!" });
-    }, 600);
-  };
-
-  const handleDeleteTc = (id) => {
-    setTestCases(testCases.filter(t => t.id !== id));
-    showToast("Test case deleted");
+  const handleDeleteTc = async (tcId) => {
+    if (!window.confirm("Delete this test case?")) return;
+    try {
+      const res = await fetch(`http://localhost:8080/api/testcases/${tcId}`, {
+        method: "DELETE", headers: apiHeaders()
+      });
+      if (res.ok) {
+        showToast("Test case deleted successfully");
+        fetchTestCases();
+      } else {
+        setTestCases(testCases.filter(t => t.id !== tcId));
+        showToast("Test case removed");
+      }
+    } catch (err) {
+      setTestCases(testCases.filter(t => t.id !== tcId));
+      showToast("Test case removed");
+    }
   };
 
   return (

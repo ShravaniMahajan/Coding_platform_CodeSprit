@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.codingplatform.common.Role;
+
 import org.springframework.stereotype.Service;
 
 import com.codingplatform.leaderboard.dto.LeaderboardResponse;
@@ -34,9 +36,15 @@ public class LeaderboardService {
 
         refreshLeaderboard();
 
+        // Only fetch USER-role accounts — admins are excluded from the public leaderboard
         List<LeaderboardEntry> entries =
                 leaderboardRepository
-                        .findAllByOrderByTotalScoreDescProblemsSolvedDesc();
+                        .findAllByUserRoleOrderByTotalScoreDescProblemsSolvedDesc(Role.USER);
+        
+        entries = entries.stream()
+                .filter(e -> !e.getUser().getUsername().toLowerCase().contains("admin") && !e.getUser().getUsername().toLowerCase().contains("testuser"))
+                .filter(e -> e.getProblemsSolved() > 0)
+                .collect(Collectors.toList());
 
         return convertToResponse(entries);
     }
@@ -48,6 +56,10 @@ public class LeaderboardService {
         List<User> users = userRepository.findAll();
 
         for (User user : users) {
+            // Skip ADMIN accounts — they should not appear on the leaderboard
+            if (user.getRole() == Role.ADMIN) {
+                continue;
+            }
             updateLeaderboardForUser(user);
         }
     }

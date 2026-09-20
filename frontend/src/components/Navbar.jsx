@@ -9,7 +9,7 @@ function Navbar({ onOpenAuth }) {
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 30);
-      const sections = ["home", "about", "features", "languages", "contact"];
+      const sections = ["home", "about", "features", "languages", "problems", "contact"];
       for (let i = sections.length - 1; i >= 0; i--) {
         const el = document.getElementById(sections[i]);
         if (el) {
@@ -27,6 +27,7 @@ function Navbar({ onOpenAuth }) {
     { label: "About", href: "#about" },
     { label: "Features", href: "#features" },
     { label: "Languages", href: "#languages" },
+    { label: "Problems", href: "#problems" },
     { label: "Contact", href: "#contact" },
   ];
 
