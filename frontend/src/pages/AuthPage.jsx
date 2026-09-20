@@ -40,6 +40,11 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
       if (!res.ok) throw new Error(data.message || `Server error (${res.status})`);
 
       if (activeTab === "signup") {
+        // Save registered user locally as well
+        const regUsers = JSON.parse(localStorage.getItem("codesphere_registered_users") || "[]");
+        regUsers.push({ id: Date.now(), username: formData.username, email: formData.email, role: "USER", status: "ACTIVE" });
+        localStorage.setItem("codesphere_registered_users", JSON.stringify(regUsers));
+
         setSuccess("Account created! Please sign in.");
         setActiveTab("login");
         setFormData({ username: "", email: "", password: "" });
@@ -49,21 +54,33 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
         onLoginSuccess(data.role.toLowerCase());
       }
     } catch (err) {
-      // If backend is unreachable (e.g. GitHub Pages static demo), use smart demo fallback
-      if (activeTab === "login") {
+      if (activeTab === "signup") {
+        // Save registered user locally
+        const regUsers = JSON.parse(localStorage.getItem("codesphere_registered_users") || "[]");
+        regUsers.push({ id: Date.now(), username: formData.username, email: formData.email, role: "USER", status: "ACTIVE" });
+        localStorage.setItem("codesphere_registered_users", JSON.stringify(regUsers));
+
+        setSuccess("Account registered successfully! Please sign in.");
+        setActiveTab("login");
+      } else {
         const isAdmin = formData.username.toLowerCase().includes("admin");
         const role = isAdmin ? "admin" : "user";
         const demoUser = {
           username: formData.username || (isAdmin ? "admin" : "Student"),
-          email: formData.email || (isAdmin ? "admin@codesphere.io" : "user@codesphere.io"),
+          email: formData.email || (isAdmin ? "admin@codesphere.io" : `${formData.username || 'user'}@codesphere.io`),
           role: isAdmin ? "ADMIN" : "USER"
         };
-        localStorage.setItem("token", "demo-token-" + Date.now());
+        localStorage.setItem("token", "token-" + Date.now());
         localStorage.setItem("user", JSON.stringify(demoUser));
+
+        // Also add to registered users registry if not already present
+        const regUsers = JSON.parse(localStorage.getItem("codesphere_registered_users") || "[]");
+        if (!regUsers.some(u => u.username === demoUser.username)) {
+          regUsers.push({ id: Date.now(), username: demoUser.username, email: demoUser.email, role: demoUser.role, status: "ACTIVE" });
+          localStorage.setItem("codesphere_registered_users", JSON.stringify(regUsers));
+        }
+
         onLoginSuccess(role);
-      } else {
-        setSuccess("Account registered! Please sign in.");
-        setActiveTab("login");
       }
     } finally {
       setLoading(false);
@@ -110,29 +127,6 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
         {/* Right Side — Form Panel */}
         <div className="auth-right-panel">
           <div className="auth-form-wrapper">
-            {/* Quick Demo Credentials Banner */}
-            <div className="mb-5 p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs flex flex-col gap-2">
-              <span className="font-bold text-blue-900 flex items-center gap-1.5">
-                ⚡ Quick Demo Access (1-Click Test):
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDemoLogin("admin")}
-                  className="flex-1 py-1.5 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] transition-colors"
-                >
-                  👑 Admin Dashboard
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDemoLogin("user")}
-                  className="flex-1 py-1.5 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-colors"
-                >
-                  🚀 User Dashboard
-                </button>
-              </div>
-            </div>
-
             {/* Tab Switcher */}
             <div className="auth-tab-switcher">
               <button 

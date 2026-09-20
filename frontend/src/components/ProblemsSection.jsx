@@ -15,23 +15,46 @@ const CATEGORY_COLORS = [
   "#10b981", "#06b6d4", "#f97316", "#6366f1",
 ];
 
+const CURATED_PROBLEMS = [
+  { id: 1, title: "Two Sum", difficulty: "EASY", category: "Arrays, Hash Table", points: 100 },
+  { id: 2, title: "Reverse String", difficulty: "EASY", category: "Strings, Two Pointers", points: 80 },
+  { id: 3, title: "Valid Parentheses", difficulty: "EASY", category: "Stack, Strings", points: 90 },
+  { id: 4, title: "Binary Search", difficulty: "EASY", category: "Algorithms, Binary Search", points: 80 },
+  { id: 5, title: "Longest Substring Without Repeating Characters", difficulty: "MEDIUM", category: "Sliding Window, Hash Table", points: 130 },
+  { id: 6, title: "3Sum", difficulty: "MEDIUM", category: "Arrays, Two Pointers", points: 140 },
+  { id: 7, title: "Container With Most Water", difficulty: "MEDIUM", category: "Two Pointers, Greedy", points: 130 },
+  { id: 8, title: "LRU Cache", difficulty: "HARD", category: "Design, Hash Table, Doubly Linked List", points: 190 },
+  { id: 9, title: "Sudoku Solver", difficulty: "HARD", category: "Backtracking, Matrix, Recursion", points: 220 },
+  { id: 10, title: "Merge K Sorted Lists", difficulty: "HARD", category: "Heap, Linked List, Divide & Conquer", points: 180 },
+  { id: 11, title: "Trapping Rain Water", difficulty: "HARD", category: "Two Pointers, Dynamic Programming, Stack", points: 200 },
+  { id: 12, title: "Word Ladder", difficulty: "HARD", category: "BFS, Graph, Hash Table", points: 200 }
+];
+
 function ProblemsSection({ onOpenAuth, onSelectProblem }) {
-  const [problems, setProblems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [problems, setProblems] = useState(CURATED_PROBLEMS);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
 
   useEffect(() => {
     fetch("http://localhost:8080/api/problems")
       .then((r) => r.json())
-      .then((data) => { setProblems(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setProblems(data);
+        } else {
+          setProblems(CURATED_PROBLEMS);
+        }
+      })
+      .catch(() => {
+        setProblems(CURATED_PROBLEMS);
+      });
   }, []);
 
   const difficulties = ["All", "Easy", "Medium", "Hard"];
 
   const filtered = problems.filter((p) => {
-    const matchSearch = p.title?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = (p.title || "").toLowerCase().includes(search.toLowerCase());
     const matchDiff = filter === "All" || (p.difficulty || "").toLowerCase() === filter.toLowerCase();
     return matchSearch && matchDiff;
   });
@@ -39,7 +62,7 @@ function ProblemsSection({ onOpenAuth, onSelectProblem }) {
   const handleSolve = (p) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      if (onOpenAuth) onOpenAuth("login");
+      if (onOpenAuth) onOpenAuth("login", p.id);
       return;
     }
     if (onSelectProblem) onSelectProblem(p.id);
