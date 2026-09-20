@@ -150,63 +150,79 @@ function ProblemsSection({ onOpenAuth, onSelectProblem }) {
 
         {/* Problems table */}
         <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
-          {/* Table header */}
-          <div style={{ display: "grid", gridTemplateColumns: "50px 1fr 100px 180px 110px", padding: "12px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            <div>#</div>
-            <div>Problem</div>
-            <div>Difficulty</div>
-            <div>Topics</div>
-            <div style={{ textAlign: "right" }}>Action</div>
+          {/* Table */}
+          <div style={{ width: "100%", overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <th style={{ padding: "12px 16px", width: "40px" }}>#</th>
+                  <th style={{ padding: "12px 16px" }}>Problem</th>
+                  <th style={{ padding: "12px 16px", width: "110px" }}>Difficulty</th>
+                  <th style={{ padding: "12px 16px", width: "220px" }}>Topics</th>
+                  <th style={{ padding: "12px 16px", width: "100px", textAlign: "right" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: "48px 0", textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ width: 32, height: 32, border: "3px solid #e2e8f0", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
+                      Loading problems...
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: "48px 0", textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
+                      No problems found{search ? ` for "${search}"` : ""}.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.slice(0, 10).map((p, i) => {
+                    const diffKey = (p.difficulty || "MEDIUM").toUpperCase();
+                    const diff = DIFF_COLOR[diffKey] || DIFF_COLOR["MEDIUM"];
+                    const rawTopic = p.topic || p.category || p.topics || "DSA";
+                    const topics = rawTopic.split(",").map(t => t.trim()).filter(Boolean);
+                    
+                    return (
+                      <tr key={p.id}
+                        style={{ borderBottom: i < filtered.slice(0, 10).length - 1 ? "1px solid #f1f5f9" : "none", transition: "background 0.15s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "#f8faff"}
+                        onMouseLeave={e => e.currentTarget.style.background = ""}
+                      >
+                        <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{i + 1}</td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b", marginBottom: 2 }}>{p.title}</div>
+                          {p.points && <div style={{ fontSize: 11, color: "#94a3b8" }}>+{p.points} pts</div>}
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <span style={{ background: diff.badge, color: diff.text, fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 999, display: "inline-block", whiteSpace: "nowrap" }}>
+                            {p.difficulty}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                            {topics.slice(0, 2).map((t, ti) => (
+                              <span key={ti} style={{ background: CATEGORY_COLORS[ti % CATEGORY_COLORS.length] + "18", color: CATEGORY_COLORS[ti % CATEGORY_COLORS.length], fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>{t}</span>
+                            ))}
+                            {topics.length > 2 && <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>+{topics.length - 2}</span>}
+                          </div>
+                        </td>
+                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                          <button onClick={() => handleSolve(p)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 14px", borderRadius: 10, background: "linear-gradient(135deg,#3b82f6,#6366f1)", color: "#fff", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", transition: "opacity 0.15s", whiteSpace: "nowrap" }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+                            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                          >
+                            Solve <ChevronRight size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-
-          {loading ? (
-            <div style={{ padding: "48px 0", textAlign: "center", color: "#94a3b8" }}>
-              <div style={{ width: 32, height: 32, border: "3px solid #e2e8f0", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-              Loading problems...
-            </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ padding: "48px 0", textAlign: "center", color: "#94a3b8", fontSize: 15 }}>
-              No problems found{search ? ` for "${search}"` : ""}.
-            </div>
-          ) : (
-            filtered.slice(0, 10).map((p, i) => {
-              const diff = DIFF_COLOR[p.difficulty] || DIFF_COLOR["MEDIUM"];
-              const topics = p.topics || p.category ? (p.topics || p.category).split(",").map(t => t.trim()).filter(Boolean) : [];
-              return (
-                <div key={p.id}
-                  style={{ display: "grid", gridTemplateColumns: "50px 1fr 100px 180px 110px", padding: "14px 20px", borderBottom: i < filtered.slice(0,10).length - 1 ? "1px solid #f1f5f9" : "none", alignItems: "center", transition: "background 0.15s", cursor: "default" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#f8faff"}
-                  onMouseLeave={e => e.currentTarget.style.background = ""}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#cbd5e1" }}>{i + 1}</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b", marginBottom: 2 }}>{p.title}</div>
-                    {p.points && <div style={{ fontSize: 11, color: "#94a3b8" }}>+{p.points} pts</div>}
-                  </div>
-                  <div>
-                    <span style={{ background: diff.badge, color: diff.text, fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 999 }}>
-                      {p.difficulty}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {topics.slice(0, 2).map((t, ti) => (
-                      <span key={ti} style={{ background: CATEGORY_COLORS[ti % CATEGORY_COLORS.length] + "18", color: CATEGORY_COLORS[ti % CATEGORY_COLORS.length], fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{t}</span>
-                    ))}
-                    {topics.length > 2 && <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, alignSelf: "center" }}>+{topics.length - 2}</span>}
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <button onClick={() => handleSolve(p)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "7px 14px", borderRadius: 10, background: "linear-gradient(135deg,#3b82f6,#6366f1)", color: "#fff", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", transition: "opacity 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
-                      onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-                    >
-                      Solve <ChevronRight size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
 
           {/* Login prompt footer */}
           {!localStorage.getItem("token") && filtered.length > 0 && (
