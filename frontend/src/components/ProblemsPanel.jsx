@@ -398,12 +398,12 @@ function ProblemsPanel({ isDark, onSelectProblem }) {
         <table className="w-full text-left border-collapse" style={{ tableLayout: "fixed" }}>
           <thead>
             <tr className={`border-b ${isDark ? "border-slate-800/80 bg-black/20" : "border-slate-100 bg-slate-50/50"} text-[10px] uppercase tracking-wider font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              <th className="py-2 px-2 font-bold" style={{ width: "70px" }}>Status</th>
-              <th className="py-2 px-2 font-bold" style={{ width: "180px" }}>Title</th>
-              <th className="py-2 px-2 font-bold" style={{ width: "78px" }}>Difficulty</th>
-              <th className="py-2 px-2 font-bold" style={{ width: "120px" }}>Category</th>
-              <th className="py-2 px-2 font-bold" style={{ width: "62px" }}>Points</th>
-              <th className="py-2 px-2 font-bold text-right" style={{ width: "90px" }}>Action</th>
+              <th className="py-2 px-2 font-bold" style={{ width: "10%" }}>Status</th>
+              <th className="py-2 px-2 font-bold" style={{ width: "30%" }}>Title</th>
+              <th className="py-2 px-2 font-bold" style={{ width: "12%" }}>Difficulty</th>
+              <th className="py-2 px-2 font-bold" style={{ width: "22%" }}>Category</th>
+              <th className="py-2 px-2 font-bold" style={{ width: "10%" }}>Points</th>
+              <th className="py-2 px-2 font-bold text-right" style={{ width: "16%" }}>Action</th>
             </tr>
           </thead>
           <tbody className={`divide-y ${isDark ? "divide-slate-800/60" : "divide-slate-100"}`}>
