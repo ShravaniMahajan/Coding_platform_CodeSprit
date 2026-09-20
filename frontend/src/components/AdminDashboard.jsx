@@ -42,12 +42,21 @@ function OverviewSection({ users, problems, submissions, assessments, onNavigate
     { label: "Active Users", value: activeCount, sub: "Live connected users", icon: Activity, iconBg: "bg-teal-50 text-teal-600 border-teal-200" },
   ];
 
-  const recentActivities = submissions.slice(0, 4).map(sub => ({
-    type: "Submission",
-    title: `${sub.problemTitle || 'Problem'} ${sub.status === 'ACCEPTED' ? 'solved' : 'attempted'} by ${sub.username || 'User'}`,
-    time: new Date(sub.createdAt).toLocaleString(),
-    status: sub.status
-  }));
+  const recentActivities = submissions.slice(0, 4).map(sub => {
+    let formattedTime = "Recently";
+    if (sub.createdAt) {
+      const d = new Date(sub.createdAt);
+      if (!isNaN(d.getTime())) formattedTime = d.toLocaleString();
+    } else if (sub.date) {
+      formattedTime = sub.date;
+    }
+    return {
+      type: "Submission",
+      title: `${sub.problemTitle || sub.problem || 'Problem'} ${sub.status === 'ACCEPTED' ? 'solved' : 'attempted'} by ${sub.username || sub.user || 'User'}`,
+      time: formattedTime,
+      status: sub.status || "ACCEPTED"
+    };
+  });
   if (recentActivities.length === 0) {
     recentActivities.push({ type: "Info", title: "No recent activity", time: "", status: "INFO" });
   }
@@ -1334,22 +1343,6 @@ function AdminDashboard({ onLogout }) {
 
       {/* Main Admin Section View */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-6">
-        {/* Data warning banner */}
-        {dataWarning && !loading && (
-          <div className="flex items-center justify-between gap-3 px-5 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold shadow-sm">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={15} className="text-amber-500 flex-shrink-0" />
-              <span>{dataWarning}</span>
-            </div>
-            <button
-              onClick={fetchAllData}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg font-bold transition-colors flex-shrink-0"
-            >
-              <RefreshCw size={12} /> Retry
-            </button>
-          </div>
-        )}
-
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
