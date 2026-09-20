@@ -135,6 +135,14 @@ function Workspace({ problemId, onBack }) {
           const p = await pRes.json();
           setProblem(p);
           setCode(getStarterCode("JAVA", p));
+        } else {
+          // Fallback: load from localStorage (mock problems)
+          const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+          const localP = localProblems.find(lp => String(lp.id) === String(problemId));
+          if (localP) {
+            setProblem(localP);
+            setCode(getStarterCode("JAVA", localP));
+          }
         }
         if (tcRes.ok) {
           const tcs = await tcRes.json();
@@ -142,16 +150,48 @@ function Workspace({ problemId, onBack }) {
           const shown = visible.length > 0 ? visible : tcs.slice(0, 2);
           setTestCases(shown);
           if (shown.length > 0) setCustomInput(shown[0].input || "");
+        } else {
+          // Fallback: load test cases from localStorage
+          const localTcs = JSON.parse(localStorage.getItem("admin_testcases") || "{}");
+          const pTcs = localTcs[String(problemId)] || [];
+          const visible = pTcs.filter(t => !t.hidden && !t.isHidden);
+          const shown = visible.length > 0 ? visible : pTcs.slice(0, 2);
+          setTestCases(shown);
+          if (shown.length > 0) setCustomInput(shown[0].input || "");
         }
         if (sRes.ok) {
           const subs = await sRes.json();
           setSubmissions(subs.filter(s => s.problemId === parseInt(problemId, 10)).slice(0, 1));
         }
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+        // Full offline fallback
+        const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+        const localP = localProblems.find(lp => String(lp.id) === String(problemId));
+        if (localP) {
+          setProblem(localP);
+          setCode(getStarterCode("JAVA", localP));
+        }
+        const localTcs = JSON.parse(localStorage.getItem("admin_testcases") || "{}");
+        const pTcs = localTcs[String(problemId)] || [];
+        setTestCases(pTcs.filter(t => !t.hidden).slice(0, 3));
+      }
       finally { setLoading(false); }
     };
     load();
   }, [problemId]);
+
+  // Auto-set SQL language for SQL problems
+  useEffect(() => {
+    if (!problem) return;
+    const isSql = (problem.topic || "").toLowerCase().includes("sql")
+      || (problem.language || "").toUpperCase() === "SQL"
+      || (problem.track || "").toUpperCase() === "SQL";
+    if (isSql) {
+      setLanguage("SQL");
+      setCode(problem.starterCodeJava || "-- Write your SQL query here\n");
+    }
+  }, [problem]);
 
   useEffect(() => {
     if (problem) setCode(getStarterCode(language, problem));

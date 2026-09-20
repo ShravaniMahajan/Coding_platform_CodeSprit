@@ -177,6 +177,87 @@ export const MOCK_PROBLEMS = [
     constraints: "1 <= s.length <= 20 | 1 <= p.length <= 20 | s contains only lowercase English letters | p contains only lowercase English letters, '.', and '*' | It is guaranteed for each occurrence of the character '*', there will be a previous valid character to match.",
     sampleInput: "s = \"aa\", p = \"a*\"", sampleOutput: "true"
   },
+  // ── SQL / DATABASE (10) ───────────────────────────────────────────────────
+  {
+    id: 26, title: "Select All Employees", difficulty: "EASY", language: "SQL", points: 60,
+    topic: "SQL, Basic Select", category: "Basic Select", track: "SQL",
+    description: "Write a SQL query to retrieve all columns from the <b>Employees</b> table. The table has columns: <code>id</code>, <code>name</code>, <code>department</code>, <code>salary</code>.",
+    constraints: "Table: Employees (id INT, name VARCHAR, department VARCHAR, salary DECIMAL)",
+    sampleInput: "Employees table with 5 rows", sampleOutput: "All rows and columns from Employees",
+    starterCodeJava: "-- Write your SQL query below\nSELECT * FROM Employees;"
+  },
+  {
+    id: 27, title: "Find High Salary Employees", difficulty: "EASY", language: "SQL", points: 70,
+    topic: "SQL, Basic Select", category: "Basic Select", track: "SQL",
+    description: "Write a SQL query to find all employees with a salary greater than <b>50000</b> from the <code>Employees</code> table. Return <code>name</code> and <code>salary</code> columns only.",
+    constraints: "Table: Employees (id INT, name VARCHAR, department VARCHAR, salary DECIMAL)",
+    sampleInput: "Employees with various salaries", sampleOutput: "name, salary for salary > 50000",
+    starterCodeJava: "-- Write your SQL query below\nSELECT name, salary\nFROM Employees\nWHERE salary > 50000;"
+  },
+  {
+    id: 28, title: "Count Employees Per Department", difficulty: "EASY", language: "SQL", points: 75,
+    topic: "SQL, Aggregation & Group By", category: "Aggregation & Group By", track: "SQL",
+    description: "Write a SQL query to count the number of employees in each department. Return <code>department</code> and <code>employee_count</code>. Order results by employee count descending.",
+    constraints: "Table: Employees (id INT, name VARCHAR, department VARCHAR, salary DECIMAL)",
+    sampleInput: "Employees in multiple departments", sampleOutput: "department | employee_count (ordered desc)",
+    starterCodeJava: "-- Write your SQL query below\nSELECT department, COUNT(*) AS employee_count\nFROM Employees\nGROUP BY department\nORDER BY employee_count DESC;"
+  },
+  {
+    id: 29, title: "Average Salary by Department", difficulty: "EASY", language: "SQL", points: 80,
+    topic: "SQL, Aggregation & Group By", category: "Aggregation & Group By", track: "SQL",
+    description: "Write a SQL query to find the average salary for each department. Return <code>department</code> and <code>avg_salary</code> rounded to 2 decimal places. Only include departments where avg salary &gt; 45000.",
+    constraints: "Table: Employees (id INT, name VARCHAR, department VARCHAR, salary DECIMAL)",
+    sampleInput: "Employees table with dept and salary", sampleOutput: "department | avg_salary (HAVING avg > 45000)",
+    starterCodeJava: "-- Write your SQL query below\nSELECT department, ROUND(AVG(salary), 2) AS avg_salary\nFROM Employees\nGROUP BY department\nHAVING AVG(salary) > 45000;"
+  },
+  {
+    id: 30, title: "Join Employees and Departments", difficulty: "MEDIUM", language: "SQL", points: 120,
+    topic: "SQL, Joins & Unions", category: "Joins & Unions", track: "SQL",
+    description: "Write a SQL query to join the <code>Employees</code> table with the <code>Departments</code> table on <code>department_id</code>. Return <code>employee name</code>, <code>department name</code>, and <code>location</code>.",
+    constraints: "Tables: Employees (id, name, department_id, salary), Departments (id, name, location)",
+    sampleInput: "Employees and Departments tables", sampleOutput: "employee_name | department_name | location",
+    starterCodeJava: "-- Write your SQL query below\nSELECT e.name AS employee_name, d.name AS department_name, d.location\nFROM Employees e\nINNER JOIN Departments d ON e.department_id = d.id;"
+  },
+  {
+    id: 31, title: "Find Employees Without Department", difficulty: "MEDIUM", language: "SQL", points: 115,
+    topic: "SQL, Joins & Unions", category: "Joins & Unions", track: "SQL",
+    description: "Write a SQL query using a <b>LEFT JOIN</b> to find all employees who are NOT assigned to any department. Return <code>employee name</code> and <code>department_id</code>.",
+    constraints: "Tables: Employees (id, name, department_id, salary), Departments (id, name)",
+    sampleInput: "Employees with some NULL department_id", sampleOutput: "name | department_id (NULL rows)",
+    starterCodeJava: "-- Write your SQL query below\nSELECT e.name, e.department_id\nFROM Employees e\nLEFT JOIN Departments d ON e.department_id = d.id\nWHERE d.id IS NULL;"
+  },
+  {
+    id: 32, title: "Second Highest Salary", difficulty: "MEDIUM", language: "SQL", points: 130,
+    topic: "SQL, Subqueries", category: "Subqueries", track: "SQL",
+    description: "Write a SQL query to find the <b>second highest salary</b> from the <code>Employees</code> table. If there is no second highest salary, return NULL.",
+    constraints: "Table: Employees (id INT, name VARCHAR, salary DECIMAL) | Salary values may not be unique",
+    sampleInput: "Employees with salaries [100, 200, 300]", sampleOutput: "200",
+    starterCodeJava: "-- Write your SQL query below\nSELECT MAX(salary) AS SecondHighestSalary\nFROM Employees\nWHERE salary < (SELECT MAX(salary) FROM Employees);"
+  },
+  {
+    id: 33, title: "Rank Employees by Salary", difficulty: "MEDIUM", language: "SQL", points: 140,
+    topic: "SQL, Window Functions", category: "Window Functions", track: "SQL",
+    description: "Write a SQL query to rank employees by their salary within each department using <code>RANK()</code> window function. Return <code>name</code>, <code>department</code>, <code>salary</code>, and <code>rank</code>.",
+    constraints: "Table: Employees (id INT, name VARCHAR, department VARCHAR, salary DECIMAL)",
+    sampleInput: "Employees table across multiple departments", sampleOutput: "name | department | salary | rank (per dept)",
+    starterCodeJava: "-- Write your SQL query below\nSELECT name, department, salary,\n  RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank\nFROM Employees;"
+  },
+  {
+    id: 34, title: "Running Total of Sales", difficulty: "HARD", language: "SQL", points: 180,
+    topic: "SQL, Window Functions", category: "Window Functions", track: "SQL",
+    description: "Write a SQL query to calculate the <b>running total</b> of sales amount ordered by date using <code>SUM() OVER</code>. Return <code>sale_date</code>, <code>amount</code>, and <code>running_total</code>.",
+    constraints: "Table: Sales (id INT, sale_date DATE, amount DECIMAL, region VARCHAR)",
+    sampleInput: "Sales table ordered by date", sampleOutput: "sale_date | amount | running_total (cumulative sum)",
+    starterCodeJava: "-- Write your SQL query below\nSELECT sale_date, amount,\n  SUM(amount) OVER (ORDER BY sale_date) AS running_total\nFROM Sales\nORDER BY sale_date;"
+  },
+  {
+    id: 35, title: "Find Duplicate Email Addresses", difficulty: "HARD", language: "SQL", points: 170,
+    topic: "SQL, Advanced SQL, Subqueries", category: "Advanced SQL", track: "SQL",
+    description: "Write a SQL query to find all duplicate email addresses in the <code>Users</code> table. Return only the <code>email</code> addresses that appear more than once, along with their count.",
+    constraints: "Table: Users (id INT, name VARCHAR, email VARCHAR)",
+    sampleInput: "Users with duplicate emails", sampleOutput: "email | count (where count > 1)",
+    starterCodeJava: "-- Write your SQL query below\nSELECT email, COUNT(*) AS count\nFROM Users\nGROUP BY email\nHAVING COUNT(*) > 1;"
+  },
 ];
 
 export const INITIAL_TEST_CASES = {
@@ -310,7 +391,9 @@ export const INITIAL_TEST_CASES = {
 export function initProblemsToLocalStorage() {
   try {
     const existing = JSON.parse(localStorage.getItem("admin_problems") || "[]");
-    if (existing.length < 25) {
+    // Check if SQL problems are present; if not, force a refresh
+    const hasSql = existing.some(p => (p.topic || "").toLowerCase().includes("sql") || p.track === "SQL");
+    if (existing.length < 35 || !hasSql) {
       localStorage.setItem("admin_problems", JSON.stringify(MOCK_PROBLEMS));
       const existingTc = JSON.parse(localStorage.getItem("admin_testcases") || "{}");
       const merged = { ...INITIAL_TEST_CASES, ...existingTc };
