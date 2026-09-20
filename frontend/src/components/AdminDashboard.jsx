@@ -193,33 +193,62 @@ function ProblemsSection({ problems, onRefresh, showToast }) {
 
   const handleSaveProblem = async (e) => {
     e.preventDefault();
+    const payload = {
+      ...formData,
+      topic: formData.track === "SQL" ? (formData.topic.toLowerCase().includes("sql") ? formData.topic : `SQL, ${formData.topic}`) : (formData.topic || "Arrays"),
+      category: formData.topic || "Arrays",
+    };
+
+    // Helper: save/update in localStorage
+    const saveToLocal = (savedProblem) => {
+      const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+      if (editingProb) {
+        const updated = localProblems.map(p => p.id === savedProblem.id ? savedProblem : p);
+        localStorage.setItem("admin_problems", JSON.stringify(updated));
+      } else {
+        localProblems.push(savedProblem);
+        localStorage.setItem("admin_problems", JSON.stringify(localProblems));
+      }
+    };
+
     try {
       const url = editingProb ? `http://localhost:8080/api/problems/${editingProb.id}` : "http://localhost:8080/api/problems";
       const method = editingProb ? "PUT" : "POST";
-      const payload = {
-        ...formData,
-        topic: formData.track === "SQL" ? (formData.topic.toLowerCase().includes("sql") ? formData.topic : `SQL, ${formData.topic}`) : (formData.topic || "Arrays")
-      };
       const res = await fetch(url, { method, headers: apiHeaders(), body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error("Failed to save problem");
-      showToast(editingProb ? "Problem updated!" : "Problem created!");
-      setShowAddModal(false);
-      onRefresh();
-    } catch (err) {
-      showToast(err.message, "error");
-    }
+      if (res.ok) {
+        const saved = await res.json().catch(() => ({ ...payload, id: editingProb?.id || Date.now() }));
+        saveToLocal(saved);
+        showToast(editingProb ? "Problem updated!" : "Problem created!");
+        setShowAddModal(false);
+        onRefresh();
+        return;
+      }
+    } catch { /* fall through to localStorage save */ }
+
+    // Fallback: save only in localStorage
+    const newProblem = editingProb
+      ? { ...editingProb, ...payload }
+      : { ...payload, id: Date.now(), points: payload.difficulty === "HARD" ? 200 : payload.difficulty === "MEDIUM" ? 130 : 80 };
+    saveToLocal(newProblem);
+    showToast(editingProb ? "Problem updated (saved locally)!" : "Problem created (saved locally)!");
+    setShowAddModal(false);
+    onRefresh();
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this problem?")) return;
+    // Remove from localStorage first
+    const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+    localStorage.setItem("admin_problems", JSON.stringify(localProblems.filter(p => p.id !== id)));
+    // Remove associated test cases
+    const allTc = JSON.parse(localStorage.getItem("admin_testcases") || "{}");
+    delete allTc[id];
+    localStorage.setItem("admin_testcases", JSON.stringify(allTc));
     try {
-      const res = await fetch(`http://localhost:8080/api/problems/${id}`, { method: "DELETE", headers: apiHeaders() });
-      if (!res.ok) throw new Error("Failed to delete problem");
-      showToast("Problem deleted successfully");
-      onRefresh();
-    } catch (err) {
-      showToast(err.message, "error");
-    }
+      await fetch(`http://localhost:8080/api/problems/${id}`, { method: "DELETE", headers: apiHeaders() });
+    } catch { /* ignore backend errors */ }
+    showToast("Problem deleted successfully");
+    onRefresh();
   };
 
   return (
@@ -464,37 +493,44 @@ function TestCasesSection({ problems = [], showToast }) {
 
   const fetchTestCases = useCallback(async () => {
     if (!selectedProbId) return;
+
+    // 1. Check localStorage first
+    const allTc = JSON.parse(localStorage.getItem("admin_testcases") || "{}");
+    const localCases = allTc[String(selectedProbId)];
+    if (localCases && localCases.length > 0) {
+      setTestCases(localCases);
+      return;
+    }
+
+    // 2. Try backend
     try {
       const res = await fetch(`http://localhost:8080/api/testcases/problem/${selectedProbId}`, { headers: apiHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setTestCases(data);
+          // Cache in localStorage
+          allTc[String(selectedProbId)] = data;
+          localStorage.setItem("admin_testcases", JSON.stringify(allTc));
           return;
         }
       }
-      // Fallback: check if the selected problem has sample testcases or provide defaults
-      const curProb = problems.find(p => String(p.id) === String(selectedProbId));
-      if (curProb?.sampleTestCases && curProb.sampleTestCases.length > 0) {
-        setTestCases(curProb.sampleTestCases);
-      } else {
-        setTestCases([
-          { id: 101, problemId: selectedProbId, input: "nums = [2, 7, 11, 15], target = 9", expectedOutput: "[0, 1]", hidden: false },
-          { id: 102, problemId: selectedProbId, input: "nums = [3, 2, 4], target = 6", expectedOutput: "[1, 2]", hidden: false },
-          { id: 103, problemId: selectedProbId, input: "nums = [3, 3], target = 6", expectedOutput: "[0, 1]", hidden: true }
-        ]);
-      }
-    } catch {
-      const curProb = problems.find(p => String(p.id) === String(selectedProbId));
-      if (curProb?.sampleTestCases && curProb.sampleTestCases.length > 0) {
-        setTestCases(curProb.sampleTestCases);
-      } else {
-        setTestCases([
-          { id: 101, problemId: selectedProbId, input: "nums = [2, 7, 11, 15], target = 9", expectedOutput: "[0, 1]", hidden: false },
-          { id: 102, problemId: selectedProbId, input: "nums = [3, 2, 4], target = 6", expectedOutput: "[1, 2]", hidden: false },
-          { id: 103, problemId: selectedProbId, input: "nums = [3, 3], target = 6", expectedOutput: "[0, 1]", hidden: true }
-        ]);
-      }
+    } catch { /* fallthrough */ }
+
+    // 3. Default sample cases for known problem (Two Sum)
+    const curProb = problems.find(p => String(p.id) === String(selectedProbId));
+    const isTwoSum = (curProb?.title || "").toLowerCase().includes("two sum");
+    if (isTwoSum) {
+      const defaults = [
+        { id: 101, problemId: selectedProbId, input: "nums = [2, 7, 11, 15], target = 9", expectedOutput: "[0, 1]", hidden: false },
+        { id: 102, problemId: selectedProbId, input: "nums = [3, 2, 4], target = 6", expectedOutput: "[1, 2]", hidden: false },
+        { id: 103, problemId: selectedProbId, input: "nums = [3, 3], target = 6", expectedOutput: "[0, 1]", hidden: true }
+      ];
+      setTestCases(defaults);
+      allTc[String(selectedProbId)] = defaults;
+      localStorage.setItem("admin_testcases", JSON.stringify(allTc));
+    } else {
+      setTestCases([]);
     }
   }, [selectedProbId, problems]);
 
@@ -513,6 +549,13 @@ function TestCasesSection({ problems = [], showToast }) {
     }, 350);
   };
 
+  // localStorage helpers for test cases
+  const saveTestCasesToLocal = (probId, cases) => {
+    const allTc = JSON.parse(localStorage.getItem("admin_testcases") || "{}");
+    allTc[String(probId)] = cases;
+    localStorage.setItem("admin_testcases", JSON.stringify(allTc));
+  };
+
   const handleAddTestCase = async (e) => {
     e.preventDefault();
     if (!inputVal.trim() || !outputVal.trim()) return;
@@ -523,6 +566,7 @@ function TestCasesSection({ problems = [], showToast }) {
       expectedOutput: outputVal,
       hidden: isHidden
     };
+    let saved = false;
     try {
       const res = await fetch("http://localhost:8080/api/testcases", {
         method: "POST", headers: apiHeaders(),
@@ -533,33 +577,29 @@ function TestCasesSection({ problems = [], showToast }) {
           hidden: isHidden 
         })
       });
-      if (res.ok) {
-        showToast?.("Test case added successfully!");
-        setInputVal(""); setOutputVal(""); setIsHidden(false);
-        fetchTestCases();
-      } else {
-        setTestCases(prev => [...prev, newTc]);
-        showToast?.("Test case saved!");
-        setInputVal(""); setOutputVal(""); setIsHidden(false);
-      }
-    } catch {
-      setTestCases(prev => [...prev, newTc]);
-      showToast?.("Test case saved!");
-      setInputVal(""); setOutputVal(""); setIsHidden(false);
-    }
+      if (res.ok) { saved = true; }
+    } catch { /* fallthrough */ }
+
+    // Always persist to localStorage
+    const updatedCases = [...testCases, newTc];
+    setTestCases(updatedCases);
+    saveTestCasesToLocal(selectedProbId, updatedCases);
+    showToast?.(saved ? "Test case added successfully!" : "Test case saved locally!");
+    setInputVal(""); setOutputVal(""); setIsHidden(false);
+    if (saved) fetchTestCases();
   };
 
   const handleDeleteTc = async (tcId) => {
     if (!window.confirm("Delete this test case?")) return;
-    setTestCases(prev => prev.filter(t => t.id !== tcId));
+    const updatedCases = testCases.filter(t => t.id !== tcId);
+    setTestCases(updatedCases);
+    saveTestCasesToLocal(selectedProbId, updatedCases);
     try {
       await fetch(`http://localhost:8080/api/testcases/${tcId}`, {
         method: "DELETE", headers: apiHeaders()
       });
-      showToast?.("Test case removed");
-    } catch {
-      showToast?.("Test case removed");
-    }
+    } catch { /* ignore */ }
+    showToast?.("Test case removed");
   };
 
   return (
@@ -1169,17 +1209,26 @@ function AdminDashboard({ onLogout }) {
       const pRes = await fetch("http://localhost:8080/api/problems", { headers: apiHeaders() });
       if (pRes.ok) {
         const data = await pRes.json();
-        setProblems(Array.isArray(data) ? data : (data.content || []));
+        const apiProblems = Array.isArray(data) ? data : (data.content || []);
+        // Merge with any locally-created problems
+        const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+        const merged = [...apiProblems];
+        localProblems.forEach(lp => { if (!merged.find(p => p.id === lp.id)) merged.push(lp); });
+        setProblems(merged);
+        localStorage.setItem("admin_problems", JSON.stringify(merged));
       } else if (pRes.status === 401 || pRes.status === 403) {
         warnings.push("Problems: unauthorized (token may be expired)");
-        setProblems(MOCK_PROBLEMS);
+        const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+        setProblems(localProblems.length > 0 ? localProblems : MOCK_PROBLEMS);
       } else {
         warnings.push(`Problems: server error ${pRes.status}`);
-        setProblems(MOCK_PROBLEMS);
+        const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+        setProblems(localProblems.length > 0 ? localProblems : MOCK_PROBLEMS);
       }
     } catch {
       warnings.push("Problems: could not reach backend");
-      setProblems(MOCK_PROBLEMS);
+      const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+      setProblems(localProblems.length > 0 ? localProblems : MOCK_PROBLEMS);
     }
 
     // ── Fetch submissions (if endpoint exists) ──

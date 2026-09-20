@@ -36,19 +36,38 @@ function ProblemsSection({ onOpenAuth, onSelectProblem }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
 
+  // Merge curated + admin-created (localStorage) + backend problems
+  const loadProblems = (backendData) => {
+    const localProblems = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+    if (backendData && backendData.length > 0) {
+      // Merge backend with local (local may have extra ones)
+      const merged = [...backendData];
+      localProblems.forEach(lp => { if (!merged.find(p => String(p.id) === String(lp.id))) merged.push(lp); });
+      return merged;
+    }
+    // No backend: merge curated + local admin problems
+    const merged = [...CURATED_PROBLEMS];
+    localProblems.forEach(lp => { if (!merged.find(p => String(p.id) === String(lp.id))) merged.push(lp); });
+    return merged;
+  };
+
   useEffect(() => {
+    // Load local problems immediately (no flash of empty)
+    setProblems(loadProblems(null));
+
     fetch("http://localhost:8080/api/problems")
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setProblems(data);
-        } else {
-          setProblems(CURATED_PROBLEMS);
-        }
+        setProblems(loadProblems(Array.isArray(data) && data.length > 0 ? data : null));
       })
       .catch(() => {
-        setProblems(CURATED_PROBLEMS);
+        setProblems(loadProblems(null));
       });
+
+    // Re-sync when localStorage changes (admin adds problem in another tab)
+    const onStorage = () => setProblems(loadProblems(null));
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const difficulties = ["All", "Easy", "Medium", "Hard"];
