@@ -14,14 +14,23 @@ function App() {
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [selectedSkillName, setSelectedSkillName] = useState("");
   const [selectedProblem, setSelectedProblem] = useState(null);
+  const [pendingProblemId, setPendingProblemId] = useState(null);
 
-  const handleOpenAuth = (tab = "login") => {
+  const handleOpenAuth = (tab = "login", problemId = null) => {
     setAuthTab(tab);
+    if (problemId) setPendingProblemId(problemId);
     setCurrentPage("auth");
   };
 
   // After login → route by role
   const handleLoginSuccess = (role) => {
+    // If user was trying to solve a problem before login, go straight to workspace
+    if (pendingProblemId) {
+      setSelectedProblem(pendingProblemId);
+      setPendingProblemId(null);
+      setCurrentPage("workspace");
+      return;
+    }
     if (role === "admin" || role === "ADMIN") {
       setCurrentPage("admin");
     } else {
@@ -72,6 +81,7 @@ function App() {
           onLogout={handleLogout}
           onSelectSkill={handleSelectSkill}
           onSelectProblem={handleSelectProblem}
+          onNavigate={handleNavigate}
         />
       )}
       {currentPage === "admin" && (

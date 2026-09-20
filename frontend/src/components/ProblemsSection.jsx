@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Code2, Lock, ChevronRight, Zap, Target, TrendingUp, Search } from "lucide-react";
+import Editor from "@monaco-editor/react";
+import { Target, Code2, Zap, TrendingUp, Search, ChevronRight, Lock } from "lucide-react";
+
 
 const DIFF_COLOR = {
   EASY: { badge: "#dcfce7", text: "#16a34a", dot: "#22c55e" },
@@ -35,6 +37,9 @@ function ProblemsSection({ onOpenAuth, onSelectProblem }) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const [selectedProblem, setSelectedProblem] = useState(null);
+  const token = localStorage.getItem("token");
+
 
   // Merge curated + admin-created (localStorage) + backend problems
   const loadProblems = (backendData) => {
@@ -79,11 +84,13 @@ function ProblemsSection({ onOpenAuth, onSelectProblem }) {
   });
 
   const handleSolve = (p) => {
-    const token = localStorage.getItem("token");
     if (!token) {
       if (onOpenAuth) onOpenAuth("login", p.id);
       return;
     }
+    // Open Monaco editor modal for the selected problem
+    setSelectedProblem(p);
+    // Optionally still trigger parent selection
     if (onSelectProblem) onSelectProblem(p.id);
   };
 
@@ -241,15 +248,60 @@ function ProblemsSection({ onOpenAuth, onSelectProblem }) {
           )}
         </div>
 
-        {/* View all CTA */}
-        {filtered.length > 10 && (
-          <div style={{ textAlign: "center", marginTop: 24 }}>
-            <button onClick={() => onOpenAuth && onOpenAuth("login")}
-              style={{ padding: "12px 32px", borderRadius: 12, background: "#fff", border: "2px solid #e2e8f0", color: "#3b82f6", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-              View all {filtered.length} problems →
-            </button>
-          </div>
-        )}
+          {selectedProblem && (
+            <div style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}>
+              <div style={{
+                width: "80%",
+                height: "80%",
+                background: "#1e1e1e",
+                borderRadius: 8,
+                padding: 16,
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+              }}>
+                <button
+                  onClick={() => setSelectedProblem(null)}
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    background: "transparent",
+                    border: "none",
+                    color: "#fff",
+                    fontSize: 18,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+                <h3 style={{ color: "#fff", marginBottom: 8 }}>
+                  {selectedProblem.title} (ID: {selectedProblem.id})
+                </h3>
+                <Editor
+                  height="100%"
+                  defaultLanguage="javascript"
+                  defaultValue="// Write your solution here..."
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    lineNumbers: "on",
+                  }}
+                />
+              </div>
+            </div>
+          )}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

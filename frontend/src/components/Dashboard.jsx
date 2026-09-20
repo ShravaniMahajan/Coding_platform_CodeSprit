@@ -52,7 +52,7 @@ const statusConfig = {
   "TIME_LIMIT_EXCEEDED": { icon: <Clock size={14} className="text-amber-500" />, label: "TLE", color: "text-amber-600 dark:text-amber-400" },
 };
 
-function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
+function Dashboard({ onLogout, onSelectSkill, onSelectProblem, onNavigate }) {
   const [activeNav, setActiveNav] = useState("problems");
   const [settingsSection, setSettingsSection] = useState("profile");
   const [userRank, setUserRank] = useState(null);
@@ -303,10 +303,10 @@ function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
           ))}
         </nav>
 
-        {/* Go to Site */}
-        <div className={`px-3 pb-4 border-t ${isDark ? "border-slate-700" : "border-slate-100"} pt-3`}>
-          <a
-            href="/"
+        {/* Go to Site & Sign Out */}
+        <div className={`px-3 pb-4 border-t ${isDark ? "border-slate-700" : "border-slate-100"} pt-3 space-y-1`}>
+          <button
+            onClick={() => onNavigate && onNavigate("landing")}
             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
               isDark
                 ? "text-slate-400 hover:text-white hover:bg-slate-800"
@@ -316,7 +316,18 @@ function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
             <Globe size={18} />
             <span>Go to Site</span>
             <ExternalLink size={13} className="ml-auto opacity-60 group-hover:opacity-100" />
-          </a>
+          </button>
+          <button
+            onClick={() => onLogout && onLogout()}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+              isDark
+                ? "text-red-400 hover:text-red-300 hover:bg-red-950/40"
+                : "text-red-500 hover:text-red-700 hover:bg-red-50"
+            }`}
+          >
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
