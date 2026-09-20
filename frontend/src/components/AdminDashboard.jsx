@@ -885,8 +885,37 @@ function SubmissionsSection({ submissions }) {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [search, setSearch] = useState("");
 
-  const filtered = submissions.filter((s) => {
-    const matchSearch = (s.username || "").toLowerCase().includes(search.toLowerCase()) || (s.problemTitle || "").toLowerCase().includes(search.toLowerCase());
+  const rawList = Array.isArray(submissions) ? submissions : [];
+
+  const normalized = rawList.map((s, idx) => {
+    const rawUser = s.username || s.user?.username || (typeof s.user === "string" ? s.user : null) || "ShravaniMahajan";
+    const rawProblem = s.problemTitle || s.problem?.title || (typeof s.problem === "string" ? s.problem : null) || "Two Sum";
+    const rawDate = s.createdAt || s.timestamp || s.date;
+    let formattedDate = "Today";
+    if (rawDate) {
+      try {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          formattedDate = d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        } else {
+          formattedDate = String(rawDate);
+        }
+      } catch {
+        formattedDate = String(rawDate);
+      }
+    }
+    return {
+      id: s.id || (idx + 1),
+      username: rawUser,
+      problemTitle: rawProblem,
+      language: s.language || "Java",
+      status: s.status || "ACCEPTED",
+      dateFormatted: formattedDate
+    };
+  });
+
+  const filtered = normalized.filter((s) => {
+    const matchSearch = s.username.toLowerCase().includes(search.toLowerCase()) || s.problemTitle.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "ALL" || s.status === filterStatus;
     return matchSearch && matchStatus;
   });
@@ -932,20 +961,28 @@ function SubmissionsSection({ submissions }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((sub) => (
-              <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
-                <td className="py-3 px-4 text-slate-400 font-mono text-xs">#SUB-{sub.id}</td>
-                <td className="py-3 px-4 font-bold text-slate-900">{sub.username || "User"}</td>
-                <td className="py-3 px-4 text-slate-800 font-semibold">{sub.problemTitle || "Problem"}</td>
-                <td className="py-3 px-4 font-mono text-xs text-blue-700 font-bold">{sub.language || "C++"}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2.5 py-1 text-xs font-extrabold rounded-full border ${statusColor[sub.status] || statusColor.ACCEPTED}`}>
-                    {sub.status}
-                  </span>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="text-center py-10 text-slate-400 text-sm">
+                  No submissions yet. When users submit solutions in the code workspace, submissions will appear here in real-time.
                 </td>
-                <td className="py-3 px-4 text-right text-xs text-slate-500 font-medium">{sub.createdAt ? new Date(sub.createdAt).toLocaleString() : "N/A"}</td>
               </tr>
-            ))}
+            ) : (
+              filtered.map((sub) => (
+                <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+                  <td className="py-3 px-4 text-slate-400 font-mono text-xs">#SUB-{sub.id}</td>
+                  <td className="py-3 px-4 font-bold text-slate-900">{sub.username}</td>
+                  <td className="py-3 px-4 text-slate-800 font-semibold">{sub.problemTitle}</td>
+                  <td className="py-3 px-4 font-mono text-xs text-blue-700 font-bold">{sub.language}</td>
+                  <td className="py-3 px-4">
+                    <span className={`px-2.5 py-1 text-xs font-extrabold rounded-full border ${statusColor[sub.status] || statusColor.ACCEPTED}`}>
+                      {sub.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right text-xs text-slate-600 font-medium">{sub.dateFormatted}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -954,11 +991,21 @@ function SubmissionsSection({ submissions }) {
 }
 
 // ─── 6. ASSESSMENTS SECTION ───────────────────────────────────────────────────
+const DEFAULT_ASSESSMENTS = [
+  { id: 1, title: "Pseudocode & Algorithm Challenge (10 MCQs)", duration: "15 mins", difficulty: "MEDIUM", status: "ONGOING", startDate: "2026-09-20 00:00", endDate: "2026-09-30 23:59", participants: 28, totalQuestions: 10, category: "Pseudocode & DSA" },
+  { id: 2, title: "Algorithm Speed Test #1", duration: "60 mins", difficulty: "MEDIUM", status: "ONGOING", startDate: "2026-09-20 18:00", endDate: "2026-09-20 23:00", participants: 18, totalQuestions: 15, category: "Algorithms" },
+  { id: 3, title: "Data Structures Hiring Sprint", duration: "90 mins", difficulty: "HARD", status: "UPCOMING", startDate: "2026-09-25 10:00", endDate: "2026-09-25 12:00", participants: 42, totalQuestions: 20, category: "Data Structures" },
+];
+
 function AssessmentsSection({ showToast }) {
-  const [assessments, setAssessments] = useState([
-    { id: 1, title: "Algorithm Speed Test #1", duration: "60 mins", difficulty: "MEDIUM", status: "ONGOING", startDate: "2026-09-02 18:00", endDate: "2026-09-02 23:00", participants: 18 },
-    { id: 2, title: "Data Structures Hiring Sprint", duration: "90 mins", difficulty: "HARD", status: "UPCOMING", startDate: "2026-09-03 10:00", endDate: "2026-09-03 12:00", participants: 42 },
-  ]);
+  const [assessments, setAssessments] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("admin_assessments") || "[]");
+      return saved.length > 0 ? saved : DEFAULT_ASSESSMENTS;
+    } catch {
+      return DEFAULT_ASSESSMENTS;
+    }
+  });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [title, setTitle] = useState("");
@@ -968,9 +1015,13 @@ function AssessmentsSection({ showToast }) {
   const handleCreate = (e) => {
     e.preventDefault();
     const newAss = {
-      id: Date.now(), title, duration, difficulty, status: "UPCOMING", startDate: "2026-09-04 10:00", endDate: "2026-09-04 12:00", participants: 0
+      id: Date.now(), title, duration, difficulty, status: "UPCOMING", startDate: "2026-09-21 10:00", endDate: "2026-09-21 12:00", participants: 0, totalQuestions: 10
     };
-    setAssessments([...assessments, newAss]);
+    const updated = [...assessments, newAss];
+    setAssessments(updated);
+    try {
+      localStorage.setItem("admin_assessments", JSON.stringify(updated));
+    } catch {}
     showToast("Assessment created successfully!");
     setShowCreateModal(false);
     setTitle("");
@@ -1523,11 +1574,13 @@ try {
 } catch (e) {}
 
 const MOCK_SUBMISSIONS = [
-  { id: 1, user: "alex_dev", problem: "Two Sum", language: "C++", status: "ACCEPTED", date: "2026-09-02 21:10" },
-  { id: 2, user: "sarah_m", problem: "Reverse String", language: "Python", status: "ACCEPTED", date: "2026-09-02 20:45" },
-  { id: 3, user: "john_coder", problem: "Binary Tree", language: "Java", status: "WRONG_ANSWER", date: "2026-09-02 19:30" },
-  { id: 4, user: "emily_c", problem: "LRU Cache", language: "C++", status: "TIME_LIMIT_EXCEEDED", date: "2026-09-02 18:15" },
-  { id: 5, user: "david_k", problem: "Merge K Sorted Lists", language: "C", status: "COMPILATION_ERROR", date: "2026-09-02 17:00" },
+  { id: 1, username: "alex_dev", problemTitle: "Two Sum", language: "C++", status: "ACCEPTED", createdAt: "2026-09-20T10:45:00Z" },
+  { id: 2, username: "sarah_m", problemTitle: "Reverse String", language: "Python", status: "ACCEPTED", createdAt: "2026-09-20T10:15:00Z" },
+  { id: 3, username: "john_coder", problemTitle: "Valid Parentheses", language: "Java", status: "WRONG_ANSWER", createdAt: "2026-09-20T09:30:00Z" },
+  { id: 4, username: "emily_c", problemTitle: "LRU Cache", language: "C++", status: "TIME_LIMIT_EXCEEDED", createdAt: "2026-09-20T08:50:00Z" },
+  { id: 5, username: "david_k", problemTitle: "Merge K Sorted Lists", language: "C", status: "COMPILATION_ERROR", createdAt: "2026-09-20T07:20:00Z" },
+  { id: 6, username: "shravani_m", problemTitle: "Sudoku Solver", language: "Java", status: "ACCEPTED", createdAt: "2026-09-20T11:10:00Z" },
+  { id: 7, username: "rahul_sharma", problemTitle: "Container With Most Water", language: "Python", status: "ACCEPTED", createdAt: "2026-09-20T06:40:00Z" },
 ];
 
 // ─── MAIN ADMIN DASHBOARD COMPONENT ──────────────────────────────────────────
@@ -1603,17 +1656,23 @@ function AdminDashboard({ onLogout }) {
       setProblems(localProblems.length > 0 ? localProblems : MOCK_PROBLEMS);
     }
 
-    // ── Fetch submissions (if endpoint exists) ──
+    // ── Fetch submissions (real user submissions from backend or localStorage) ──
     try {
       const sRes = await fetch("http://localhost:8080/api/submissions", { headers: apiHeaders() });
       if (sRes.ok) {
         const data = await sRes.json();
-        setSubmissions(Array.isArray(data) ? data : (data.content || []));
+        const apiSubs = Array.isArray(data) ? data : (data.content || []);
+        const localSubs = JSON.parse(localStorage.getItem("codesphere_submissions") || "[]");
+        const merged = [...apiSubs];
+        localSubs.forEach(ls => { if (!merged.find(s => String(s.id) === String(ls.id))) merged.push(ls); });
+        setSubmissions(merged);
       } else {
-        setSubmissions(MOCK_SUBMISSIONS);
+        const localSubs = JSON.parse(localStorage.getItem("codesphere_submissions") || "[]");
+        setSubmissions(localSubs);
       }
     } catch {
-      setSubmissions(MOCK_SUBMISSIONS);
+      const localSubs = JSON.parse(localStorage.getItem("codesphere_submissions") || "[]");
+      setSubmissions(localSubs);
     }
 
     // ── Fetch contact messages ──

@@ -4,10 +4,22 @@ import {
   Layers, Terminal, X, ArrowRight, BookOpen, Filter, Zap, Coins
 } from "lucide-react";
 
+import { MOCK_PROBLEMS, initProblemsToLocalStorage } from "../data/mockProblems";
+
 function ProblemsPanel({ isDark, onSelectProblem }) {
-  const [problems, setProblems] = useState([]);
+  const loadLocalProblems = () => {
+    initProblemsToLocalStorage();
+    try {
+      const local = JSON.parse(localStorage.getItem("admin_problems") || "[]");
+      return local.length > 0 ? local : MOCK_PROBLEMS;
+    } catch {
+      return MOCK_PROBLEMS;
+    }
+  };
+
+  const [problems, setProblems] = useState(() => loadLocalProblems());
   const [submissions, setSubmissions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Active Track / Domain: "DSA" (Data Structures) vs "SQL"
   const [activeTrack, setActiveTrack] = useState("DSA");
@@ -22,6 +34,9 @@ function ProblemsPanel({ isDark, onSelectProblem }) {
   const [quickViewProblem, setQuickViewProblem] = useState(null);
 
   useEffect(() => {
+    // Initial sync
+    setProblems(loadLocalProblems());
+
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -34,19 +49,40 @@ function ProblemsPanel({ isDark, onSelectProblem }) {
 
         if (pRes && pRes.ok) {
           const pData = await pRes.json();
-          setProblems(pData);
+          if (Array.isArray(pData) && pData.length > 0) {
+            const local = loadLocalProblems();
+            const merged = [...pData];
+            local.forEach(lp => {
+              if (!merged.find(p => String(p.id) === String(lp.id))) {
+                merged.push(lp);
+              }
+            });
+            setProblems(merged);
+          } else {
+            setProblems(loadLocalProblems());
+          }
+        } else {
+          setProblems(loadLocalProblems());
         }
+
         if (sRes && sRes.ok) {
           const sData = await sRes.json();
-          setSubmissions(sData);
+          if (Array.isArray(sData)) setSubmissions(sData);
         }
       } catch (err) {
         console.error("Failed to load problems data", err);
+        setProblems(loadLocalProblems());
       } finally {
         setLoading(false);
       }
     };
     fetchData();
+
+    const handleStorage = () => {
+      setProblems(loadLocalProblems());
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   // Compute problem statuses

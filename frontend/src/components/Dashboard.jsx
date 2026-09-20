@@ -23,7 +23,8 @@ import {
   Sparkles,
   ExternalLink,
   Globe,
-  Check
+  Check,
+  Award
 } from "lucide-react";
 
 import ProblemsPanel from "./ProblemsPanel";
@@ -34,6 +35,7 @@ import MyListsView from "./userpanel/MyListsView";
 import ProgressView from "./userpanel/ProgressView";
 import NotebookView from "./userpanel/NotebookView";
 import PointsView from "./userpanel/PointsView";
+import AssessmentView from "./userpanel/AssessmentView";
 
 const diffColor = {
   Easy: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800",
@@ -82,6 +84,8 @@ function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
     const saved = localStorage.getItem("user_points");
     return saved ? parseInt(saved, 10) : 62;
   });
+
+  const [activeAssessment, setActiveAssessment] = useState(null);
 
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
@@ -206,6 +210,7 @@ function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
 
   const navItems = [
     { id: "problems", label: "Problems", icon: Code2 },
+    { id: "assessments", label: "Assessments", icon: Award },
     { id: "lists", label: "My Lists", icon: Bookmark },
     { id: "notebook", label: "Notebook", icon: BookOpen },
     { id: "progress", label: "Progress", icon: TrendingUp },
@@ -494,6 +499,185 @@ function Dashboard({ onLogout, onSelectSkill, onSelectProblem }) {
         <div className="p-6 space-y-6">
           {/* Problems View */}
           {activeNav === "problems" && <ProblemsPanel isDark={isDark} onSelectProblem={onSelectProblem} />}
+
+          {/* Assessments Hub & Solver */}
+          {activeNav === "assessments" && (
+            activeAssessment ? (
+              <div className="space-y-4">
+                <button
+                  onClick={() => setActiveAssessment(null)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    isDark ? "bg-slate-800 text-slate-200 hover:bg-slate-700" : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 shadow-sm"
+                  }`}
+                >
+                  ← Back to Assessments Hub
+                </button>
+                <AssessmentView
+                  onCompleteAssessment={(res) => {
+                    const currentPts = parseInt(localStorage.getItem("user_points") || "62", 10);
+                    setUserPoints(currentPts);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Header Banner */}
+                <div className={`p-6 sm:p-8 rounded-3xl border shadow-sm ${
+                  isDark ? "bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border-blue-900/40" : "bg-gradient-to-r from-blue-600 to-indigo-700 border-blue-500 text-white shadow-blue-500/10"
+                }`}>
+                  <div className="max-w-3xl space-y-3">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-white/20 backdrop-blur-md text-white border border-white/30">
+                      <Sparkles size={13} /> Timed Assessments & MCQs
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                      Test Your Algorithmic & Pseudocode Skills
+                    </h2>
+                    <p className="text-sm sm:text-base text-blue-100 font-medium">
+                      Complete timed pseudocode MCQ challenges, test your understanding of backtracking, time complexity & data structures, and earn up to +100 bonus profile points.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live & Published Assessments Grid */}
+                <div>
+                  <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-slate-900"}`}>
+                    <Award size={20} className="text-blue-500" /> Active Assessments (1 Live)
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {/* 1. Pseudocode & Sudoku Assessment */}
+                    <div className={`p-6 rounded-3xl border transition-all duration-200 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
+                      isDark ? "bg-slate-800 border-slate-700 shadow-lg" : "bg-white border-slate-200 shadow-md"
+                    }`}>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-1 text-xs font-extrabold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                            LIVE NOW · 10 MCQs
+                          </span>
+                          <span className="text-xs font-bold text-amber-500 flex items-center gap-1">
+                            🪙 +100 Pts
+                          </span>
+                        </div>
+
+                        <h4 className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                          Pseudocode & Sudoku Algorithm Challenge
+                        </h4>
+
+                        <p className={`text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                          10 Pseudocode MCQs covering Backtracking base conditions, 3x3 block subgrid formulas, bitmasking, stack evaluation & graph traversal complexities.
+                        </p>
+
+                        <div className={`grid grid-cols-2 gap-2 text-xs py-2 border-y ${isDark ? "border-slate-700 text-slate-400" : "border-slate-100 text-slate-500"}`}>
+                          <div><span className="font-bold">Duration:</span> 15 mins</div>
+                          <div><span className="font-bold">Questions:</span> 10 MCQs</div>
+                          <div><span className="font-bold">Difficulty:</span> Medium</div>
+                          <div><span className="font-bold">Passing:</span> 70%</div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setActiveAssessment(1)}
+                        className="mt-5 w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all"
+                      >
+                        <span>Start Assessment / Solve</span>
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+
+                    {/* 2. Algorithm Speed Test */}
+                    <div className={`p-6 rounded-3xl border opacity-90 flex flex-col justify-between ${
+                      isDark ? "bg-slate-800/80 border-slate-700" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-1 text-xs font-extrabold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-300">
+                            ONGOING
+                          </span>
+                          <span className="text-xs font-bold text-amber-500">🪙 +150 Pts</span>
+                        </div>
+                        <h4 className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                          Algorithm Speed Test #1
+                        </h4>
+                        <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                          15 questions on dynamic programming, binary search, and sliding window optimization.
+                        </p>
+                        <div className={`grid grid-cols-2 gap-2 text-xs py-2 border-y ${isDark ? "border-slate-700 text-slate-400" : "border-slate-100 text-slate-500"}`}>
+                          <div><span className="font-bold">Duration:</span> 60 mins</div>
+                          <div><span className="font-bold">Enrolled:</span> 18 users</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveAssessment(1)}
+                        className={`mt-5 w-full py-3 px-4 rounded-2xl font-bold text-xs border transition-all ${
+                          isDark ? "bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        Take Test
+                      </button>
+                    </div>
+
+                    {/* 3. Data Structures Hiring Sprint */}
+                    <div className={`p-6 rounded-3xl border opacity-75 flex flex-col justify-between ${
+                      isDark ? "bg-slate-800/60 border-slate-700" : "bg-white border-slate-200 shadow-sm"
+                    }`}>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-1 text-xs font-extrabold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 border border-purple-300">
+                            UPCOMING
+                          </span>
+                          <span className="text-xs font-bold text-amber-500">🪙 +200 Pts</span>
+                        </div>
+                        <h4 className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                          Data Structures Hiring Sprint
+                        </h4>
+                        <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                          Comprehensive competitive programming round with trees, graphs, and heap problems.
+                        </p>
+                        <div className={`grid grid-cols-2 gap-2 text-xs py-2 border-y ${isDark ? "border-slate-700 text-slate-400" : "border-slate-100 text-slate-500"}`}>
+                          <div><span className="font-bold">Duration:</span> 90 mins</div>
+                          <div><span className="font-bold">Starts:</span> Sep 25, 10:00</div>
+                        </div>
+                      </div>
+                      <button
+                        disabled
+                        className="mt-5 w-full py-3 px-4 rounded-2xl font-bold text-xs bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500 cursor-not-allowed"
+                      >
+                        Opens Sep 25
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Past Results / Submissions Section */}
+                {(() => {
+                  const results = JSON.parse(localStorage.getItem("codesphere_assessment_results") || "[]");
+                  if (results.length === 0) return null;
+                  return (
+                    <div className={`p-6 rounded-3xl border ${isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200 shadow-sm"}`}>
+                      <h4 className={`text-base font-bold mb-3 ${isDark ? "text-white" : "text-slate-900"}`}>
+                        Your Assessment History
+                      </h4>
+                      <div className="space-y-2">
+                        {results.map((r, i) => (
+                          <div key={i} className={`p-4 rounded-2xl flex items-center justify-between ${isDark ? "bg-slate-700/50" : "bg-slate-50"}`}>
+                            <div>
+                              <div className={`font-bold text-sm ${isDark ? "text-white" : "text-slate-900"}`}>{r.title}</div>
+                              <div className="text-xs text-slate-400">{r.date}</div>
+                            </div>
+                            <div className="text-right">
+                              <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-700 border border-emerald-300">
+                                Score: {r.accuracy || `${r.score}%`}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )
+          )}
 
           {/* 3. My Lists View (matching Screenshot 2) */}
           {activeNav === "lists" && (
