@@ -15,28 +15,6 @@ function App() {
   const [selectedSkillName, setSelectedSkillName] = useState("");
   const [selectedProblem, setSelectedProblem] = useState(null);
 
-
-  // ── Auto-restore session on app load ──────────────────────────────
-  // If a valid token+user is already in localStorage, skip landing & go straight to dashboard/admin
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userRaw = localStorage.getItem("user");
-    if (token && userRaw) {
-      try {
-        const user = JSON.parse(userRaw);
-        if (user.role === "ADMIN" || user.role === "admin") {
-          setCurrentPage("admin");
-        } else {
-          setCurrentPage("dashboard");
-        }
-      } catch {
-        // Corrupt stored data — clear and stay on landing
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-    }
-  }, []);
-
   const handleOpenAuth = (tab = "login") => {
     setAuthTab(tab);
     setCurrentPage("auth");

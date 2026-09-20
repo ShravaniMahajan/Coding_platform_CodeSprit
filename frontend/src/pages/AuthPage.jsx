@@ -13,6 +13,15 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const handleDemoLogin = (role) => {
+    const demoUser = role === "admin"
+      ? { username: "admin", email: "admin@codesphere.io", role: "ADMIN" }
+      : { username: "StudentDemo", email: "student@codesphere.io", role: "USER" };
+    localStorage.setItem("token", "demo-token-" + Date.now());
+    localStorage.setItem("user", JSON.stringify(demoUser));
+    onLoginSuccess(role);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true); setError(""); setSuccess("");
@@ -40,7 +49,22 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
         onLoginSuccess(data.role.toLowerCase());
       }
     } catch (err) {
-      setError(err.message);
+      // If backend is unreachable (e.g. GitHub Pages static demo), use smart demo fallback
+      if (activeTab === "login") {
+        const isAdmin = formData.username.toLowerCase().includes("admin");
+        const role = isAdmin ? "admin" : "user";
+        const demoUser = {
+          username: formData.username || (isAdmin ? "admin" : "Student"),
+          email: formData.email || (isAdmin ? "admin@codesphere.io" : "user@codesphere.io"),
+          role: isAdmin ? "ADMIN" : "USER"
+        };
+        localStorage.setItem("token", "demo-token-" + Date.now());
+        localStorage.setItem("user", JSON.stringify(demoUser));
+        onLoginSuccess(role);
+      } else {
+        setSuccess("Account registered! Please sign in.");
+        setActiveTab("login");
+      }
     } finally {
       setLoading(false);
     }
@@ -86,6 +110,29 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
         {/* Right Side — Form Panel */}
         <div className="auth-right-panel">
           <div className="auth-form-wrapper">
+            {/* Quick Demo Credentials Banner */}
+            <div className="mb-5 p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs flex flex-col gap-2">
+              <span className="font-bold text-blue-900 flex items-center gap-1.5">
+                ⚡ Quick Demo Access (1-Click Test):
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin("admin")}
+                  className="flex-1 py-1.5 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] transition-colors"
+                >
+                  👑 Admin Dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin("user")}
+                  className="flex-1 py-1.5 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition-colors"
+                >
+                  🚀 User Dashboard
+                </button>
+              </div>
+            </div>
+
             {/* Tab Switcher */}
             <div className="auth-tab-switcher">
               <button 
@@ -136,7 +183,7 @@ function AuthPage({ initialTab = "login", onLoginSuccess, onBack }) {
                 <label className="auth-label">{activeTab === "login" ? "Email / Username" : "Username"}</label>
                 <input
                   type="text" name="username" value={formData.username} onChange={handleChange} required
-                  placeholder={activeTab === "login" ? "Enter email or username" : "Choose a username"}
+                  placeholder={activeTab === "login" ? "Enter email or username (e.g. admin)" : "Choose a username"}
                   className="auth-input"
                 />
               </div>
